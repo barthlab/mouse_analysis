@@ -1,5 +1,10 @@
 #!python3
 
+# TODO standardize y-axis
+# TODO label x-axis on all the graphs not just the bottom one
+# TODO why are we printing 0 for performance and the other values when we don't have that many results?
+# TODO make md file on how to download python and other libraries (using pip)
+
 import argparse
 import csv
 import datetime
