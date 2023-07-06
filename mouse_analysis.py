@@ -1,7 +1,5 @@
 #!python3
 
-# TODO standardize y-axis
-# TODO label x-axis on all the graphs not just the bottom one
 # TODO why are we printing 0 for performance and the other values when we don't have that many results?
 # TODO make md file on how to download python and other libraries (using pip)
 
@@ -12,6 +10,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog
@@ -276,27 +275,30 @@ def make_graph(final_statistics, acclimation_time, bin_time, file_path):
     fig, axs = plt.subplots(3, 1, sharex=True, figsize=(8, 10))
 
     # First plot: Licking (hertz)
-    axs[0].plot(time_bins, avg_lick_frq_water, color='green', label="Water Lick Freq (Hz)")
-    axs[0].plot(time_bins, avg_lick_frq_blank, color='red', label="Blank Lick Freq (Hz)")
+    axs[0].plot(time_bins, avg_lick_frq_water, color='green', label="Water Lick Freq (Hz)", marker='o')
+    axs[0].plot(time_bins, avg_lick_frq_blank, color='red', label="Blank Lick Freq (Hz)", marker='o')
     axs[0].set_ylabel("Licking (Hz)")
-    axs[0].legend()
-    axs[0].set_xticks(time_bins)
-    axs[0].set_xticklabels(time_bins)
-
+    axs[0].set_ylim([0,12])
+    
     # Second plot: Number of Trials (per bin)
-    axs[1].plot(time_bins, num_trials, color='blue', label="Number of Trials")
+    axs[1].plot(time_bins, num_trials, color='black', label="Number of Trials")
     axs[1].set_ylabel("Number of Trials")
-    axs[1].legend()
-    axs[1].set_xticks(time_bins)
-    axs[1].set_xticklabels(time_bins)
+    axs[1].set_ylim([0, 500])
+    axs[1].fill_between(time_bins, 0, num_trials, facecolor='grey', alpha=0.5)
 
     # Third plot: Performance
-    axs[2].plot(time_bins, performance, color='purple', label="Performance")
+    axs[2].plot(time_bins, performance, color='black', label="Performance", marker='o')
     axs[2].set_ylabel("Performance")
     axs[2].set_xlabel("Training time (hours)")
-    axs[2].legend()
-    axs[2].set_xticks(time_bins)
-    axs[2].set_xticklabels(time_bins)
+    axs[2].set_ylim([-10, 10])
+    axs[2].axhline(y=0, xmin=0,xmax=1, ls='--', lw=0.75, color='black',zorder=0)
+    
+    for ax in axs:
+        ax.legend()
+        ax.set_xticks(time_bins)
+        ax.set_xticklabels(time_bins)
+        ax.tick_params(labelbottom=True)
+        ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
 
     # Adjust spacing between subplots
     plt.tight_layout()
