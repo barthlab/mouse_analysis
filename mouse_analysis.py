@@ -4,44 +4,78 @@ import argparse
 import csv
 import datetime
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import messagebox
 
 
 
-def parse_args():
-    default_acclimation_time = 48  # hours
-    default_bin_time = 4  # hours
-    default_last_x_percent = 20 # percent
+def validate_pos_float(input_str):
+    try:
+        float_val = float(input_str)
+        if float_val >= 0:
+            return float_val
+        else:
+            return None
+    except ValueError:
+        return None
 
-    parser = argparse.ArgumentParser(description="Calculate mouse training statistics")
-    parser.add_argument("--animal_name", required=True, type=str, help="Name of the animal, to name the output files")
-    parser.add_argument("--csv_files", required=True, type=str, nargs="+", help="In order paths to the CSV files")
-    parser.add_argument("--acclimation_time", type=float, default=default_acclimation_time, help=f"Acclimation time in hours (default: {default_acclimation_time})")
-    parser.add_argument("--bin_time", type=float, default=default_bin_time, help=f"Bin time in hours (default: {default_bin_time})")
-    parser.add_argument("--last_x_percent", type=float, default=default_last_x_percent, help=f"Percentage of data to consider (0 < last_x_percent < 100) (default: {default_last_x_percent})")
 
-    parsed = parser.parse_args()
+def validate_last_x_percent(input_str):
+    float_val = validate_pos_float(input_str)
+    if float_val is None or float_val <= 0 or float_val > 1:
+        return None
+    return float_val
 
-    # Check if all csv_files are valid files
-    for csv_file in parsed.csv_files:
-        if not os.path.isfile(csv_file):
-            parser.error(f"The provided CSV file '{csv_file}' does not exist.")
 
-    # Check if acclimation_time is greater than 0
-    if parsed.acclimation_time < 0:
-        parser.error("Acclimation time must be greater than 0.")
+def select_directory(prompt):
+    directory = filedialog.askdirectory(title=prompt)
+    if directory:
+        return directory
+    else:
+        sys.exit("No directory selected")
 
-    # Check if bin_time is greater than 0
-    if parsed.bin_time < 0:
-        parser.error("Bin time must be greater than 0.")
 
-    # Check if last_x_percent is in the range (0, 100)
-    if not 0 < parsed.last_x_percent < 100:
-        parser.error("last_x_percent must be in the range (0, 100).")
+def get_files_in_dir(directory):
+    files = []
+    for file in os.listdir(directory):
+        file_path = os.path.join(directory, file)
+        if os.path.isfile(file_path):
+            files.append(file_path)
+    return files
 
-    return parsed
+
+def get_user_input():
+    csv_directory = select_directory("Select directory with CSV files")
+
+    analysis_directory = select_directory("Select directory for analysis files")
+
+    while True:
+        acclimation_time = validate_pos_float(input("Enter acclimation time (in hours): "))
+        if acclimation_time is not None:
+            break
+        else:
+            print("Invalid input. Please enter a valid floating-point number.")
+
+    while True:
+        bin_time = validate_pos_float(input("Enter bin time (in hours): "))
+        if bin_time is not None:
+            break
+        else:
+            print("Invalid input. Please enter a valid floating-point number.")
+
+    while True:
+        last_x_percent = validate_last_x_percent(input("Enter the last x percent (0 < x <= 1): "))
+        if last_x_percent is not None:
+            break
+        else:
+            print("Invalid input. Please enter a valid floating-point number between 0 and 1.")
+
+    return get_files_in_dir(csv_directory), analysis_directory, acclimation_time, bin_time, last_x_percent
 
 
 
@@ -270,14 +304,9 @@ def make_graph(final_statistics, acclimation_time, bin_time, file_path):
 
 if __name__ == "__main__":
 
-    args = parse_args()
+    csv_files, analysis_dir, acclimation_time_hours, bin_time_hours, last_x_percent = get_user_input()
 
-    animal_name = args.animal_name
-    csv_files = args.csv_files
-    acclimation_time = args.acclimation_time
-    bin_time = args.bin_time
-    bin_time_ms = bin_time * 60 * 60 * 1000
-    last_x_percent = args.last_x_percent
+    bin_time_ms = bin_time_hours * 60 * 60 * 1000
 
     df = make_df_from_csv_files(csv_files)
 
@@ -301,8 +330,8 @@ if __name__ == "__main__":
         statistics = calculate_final_statistics(bin_data)
         final_bin_statistics.append(statistics)
 
-    save_data_to_csv(final_bin_statistics, acclimation_time, bin_time, f"{animal_name}_bin.csv")
-    make_graph(final_bin_statistics, acclimation_time, bin_time, f"{animal_name}_bin.png")
+    save_data_to_csv(final_bin_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/bin.csv")
+    make_graph(final_bin_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/bin.png")
 
 
     # To use for the last x%
@@ -316,5 +345,5 @@ if __name__ == "__main__":
         statistics = calculate_final_statistics(last_x_percent_of_day)
         final_day_statistics.append(statistics)
 
-    save_data_to_csv(final_day_statistics, acclimation_time, bin_time, f"{animal_name}_day.csv")
-    #make_graph(final_day_statistics, acclimation_time, bin_time, f"{animal_name}_day.png")
+    save_data_to_csv(final_day_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/day.csv")
+    #make_graph(final_day_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/day.png")
