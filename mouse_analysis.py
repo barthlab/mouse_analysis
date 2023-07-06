@@ -27,7 +27,7 @@ def validate_pos_float(input_str):
 
 def validate_last_x_percent(input_str):
     float_val = validate_pos_float(input_str)
-    if float_val is None or float_val <= 0 or float_val > 1:
+    if float_val is None or float_val <= 0 or float_val > 100:
         return None
     return float_val
 
@@ -69,11 +69,11 @@ def get_user_input():
             print("Invalid input. Please enter a valid floating-point number.")
 
     while True:
-        last_x_percent = validate_last_x_percent(input("Enter the last x percent (0 < x <= 1): "))
+        last_x_percent = validate_last_x_percent(input("Enter the last x percent (0 < x <= 100): "))
         if last_x_percent is not None:
             break
         else:
-            print("Invalid input. Please enter a valid floating-point number between 0 and 1.")
+            print("Invalid input. Please enter a valid floating-point number between 0 and 100.")
 
     return get_files_in_dir(csv_directory), analysis_directory, acclimation_time, bin_time, last_x_percent
 
