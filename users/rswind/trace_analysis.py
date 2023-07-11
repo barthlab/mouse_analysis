@@ -4,6 +4,13 @@
 import re
 import os
 import argparse
+import sys
+
+import tkinter as tk
+from tkinter import *
+from tkinter import filedialog
+from tkinter.simpledialog import Dialog
+from tkinter import messagebox
 
 import numpy as np
 import pandas as pd
@@ -11,10 +18,58 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import loader
+import analysis_functions
+
 pd.options.mode.chained_assignment = None  # default='warn'
 
 # to run:
 # python3 trace_analysis.py --metadata metadata-file --trial_bin_size bin-size --bin_size bin-size [--group] path-to-data
+# maintain both user-input and console-run options
+
+# adapted from QueryDialog in simpledialog.py from tkinter v 8.6
+class MultiPromptDialog(Dialog):
+    def __init__(self, title, prompts, initalvalues, types, parent = None):
+        # TODO: error if length of prompt, initalvalues and types not the same
+
+        self.prompts = prompts
+        self.initialvalues = initalvalues
+        self.types = types
+        Dialog.__init__(self, parent, title)
+
+    def body(self, master):
+        self.entries = []
+        for i in range(len(self.prompts)): 
+            w = Label(master, text=self.prompts[i], justify=LEFT)
+            w.grid(row=i, padx=5, sticky=W)
+
+            self.entries.append(Entry(master, name=f"entry{i}"))
+            self.entries[i].grid(row=i, column=1,padx=5, sticky=E)
+
+            if self.initialvalues[i] is not None:
+                self.entries[i].insert(0, self.initialvalues[i])
+                print(self.initialvalues[i])
+                self.entries[i].select_range(0, END)
+
+        return self.entries[0]
+    
+    def apply(self):
+        self.result = []
+        for i in range(len(self.types)):
+            self.result.append(self.types[i](self.entries[i].get()))
+        return self.result
+
+
+def select_directory(prompt):
+    directory = filedialog.askdirectory(title=prompt)
+    if directory:
+        return directory
+    else:
+        sys.exit("No directory selected")
+
+def get_parameters(title, prompts, initalvalues, types):
+    d = MultiPromptDialog(title, prompts, initalvalues, types)
+    return d.result
 
 # read + interpret console commands
 # adapted from code in mouse_analysis.py written by Alex Kiroff
@@ -59,187 +114,254 @@ def parse_args():
     return parsed
 
 
-# open and format animal data
-def time_from_file(filename):
-    "Convert filename to timestamp for start of trials"
-    datetime = re.findall("\d\d_\d\d_\d\d_T_\d\d_\d\d_\d\d", filename)[0]
-    datetime = datetime.replace("_", "-", 2).replace("_T_", " ").replace("_", ":")
-    return pd.Timestamp(datetime)
+# adapted from code in mouse_analysis.py written by Alex Kiroff
+# TODO: fix to the parameters my script need
+def get_user_input():
 
+    csv_directory = select_directory("Select directory with CSV files")
 
-def load_file(filename):
-    '''Given a string filename, loads in the data, extracts the start time from the filename, and formats the timestamps based on the start time.'''
-    animal = pd.read_csv(filename, header=None)
-    animal = animal.rename(columns={0:"timestamp",1:"poke", 2:"lick", 3:"water", 4:"delay"})
-    datetime = time_from_file(filename)
-    animal["timestamp"] = pd.to_datetime(animal["timestamp"], unit="s", origin=pd.Timestamp(datetime))
-    animal["delay"] = pd.to_timedelta(animal["delay"], unit="ms")
-    return animal.iloc[:, 0:5]
+    analysis_directory = select_directory("Select directory for analysis files")
 
-def get_trials (trial):
-    # generates a list of idx of length x
-    (trial_no, len) = trial
-    return pd.Series([trial_no for i in range(len)], dtype="int")
+    metadata_file = filedialog.askopenfile() 
 
-def enumerate_trials(animal):
-    '''Given the set of data for an animal, labels each sample in a trial with the trial type and the trial number, numbering trials consecutively from 1.
-    The number of trials, and the number of each trial type, matches v16 of the matlab analysis.
-    '''
-    #first sample, all samples where current water code is not 7 (timeout) and previous is 7,  last sample
-    trial_boundary = pd.concat([animal.iloc[[0]], animal[(animal["water"]!=7) & (animal["water"].shift() == 7)], animal.iloc[[animal.shape[0]-1]]])
-    #indexes of first sample in each trial
-    trial_boundary_indicies = pd.Series(trial_boundary.index)
+    # condition_name, acc_col_name
+    title = "Training Metadata"
+    prompts = ["Condition Name", "Acclimation Column Name (in metadata file)"]
+    initialvalues = [None, None]
+    types = [str, str]
+    metadata_params = get_parameters(title, prompts, initialvalues, types)
 
-    #get number of samples per trial (difference in sample number between previous index and current index)
-    num_samples = trial_boundary_indicies.diff().fillna(0).astype('int').tolist()
-    #label with index
-    trial_count = pd.Series(enumerate(num_samples))
+    # bin_time_hours, last_x_percent, freq_window, freq_bin
+    title = "Bin Size Parameters"
+    prompts = ["Bin size (hours)", "Frequency Rolling Average window size (ms)", "Frequency Bin Size (ms)", "Last percent of day"]
+    initialvalues = [4, 300, 100, 20]
+    types = [int, int, int, int]
+    bin_params = get_parameters(title, prompts, initialvalues, types)
 
-    #label all samples in a trial with its trial number
-    trial_count = trial_count.map(get_trials).explode()[1:]
-    trial_count.index = range(0, trial_count.shape[0])
-    #add trial labels to animal data
-    animal.insert(1, "trial no", trial_count)
+    # min_trials, min_water_trials, min_blank_trials
+    title = "Trial number thresholds per bin"
+    prompts = ["Minimum total trials", "Minimum water trials", "Minimum blank trials"]
+    initialvalues = [10, 1, 1]
+    types = [int, int, int]
+    min_trials_nos = get_parameters(title, prompts, initialvalues, types)
 
-    # set trial no for last sample
-    animal.loc[animal.shape[0] - 1, "trial no",] = trial_boundary.shape[0] - 1
+    return csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos
 
-    return animal
+# adapted from code in mouse_analysis.py written by Alex Kiroff
+# TODO: fix to the data/file structure my script needs
+def save_data_to_csv(final_statistics, acclimation_time, bin_time, file_path):
+    # Column labels
+    labels = ["Time Bin", "Avg Water Lick Freq (Hz)", "Avg Blank Lick Freq (Hz)", "Performance", "Num Datapoints"]
 
-def label_trials(animal):
-    # get all trials labeled with a 3 (water trials)
-    go = animal.groupby(["trial no"]).filter(lambda x: (x["water"]==3).any())
-    # label all these trials as water
-    go["trial type"] = ["water" for i in range(go.shape[0])]
-    animal["trial type"] = go["trial type"]
-    # label remaning trials as blank
-    animal["trial type"] = animal["trial type"].fillna(value="blank")
-    return animal
+    # Open the CSV file for writing
+    with open(file_path, 'w+', newline='') as csv_file:
+        writer = csv.writer(csv_file)
 
-def format_data(data):
-    '''Set animal and condition, update lick value to binary 1/0, format acclimation time, and drop last sample of each trial'''
-    data.loc[data["lick"] == 2,"lick"] = 1
-    data["acc"] = pd.to_timedelta(data["acc"], unit="day")
-    # drop last sample since it is duplicate
-    data = data[data.groupby(["condition", "animal", "trial no"]).cumcount(ascending=False) > 0]
-    return data
+        # Write column labels
+        writer.writerow(labels)
 
-def make_animal_df(andir, metadata, animal_name):
-    fs = os.listdir(andir)
-    #ensure files concatenated in time order
-    fs.sort()
-    animal = []        
-    #this will load all files in a given directory - should only have the relevant training files
-    for f in fs:
-        f_path = andir + "\\" + f
-        if (os.path.isfile(f_path)):      
-            animal.append(load_file(f_path))
-
-    animal = pd.concat(animal, ignore_index=True)
-    animal = enumerate_trials(animal)
-    animal = label_trials(animal)
-
-    #load metadata if the animal has it
-    if not (metadata[metadata["Animal ID"] == animal_name].empty):     
-        an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
-        animal["acc"] = an_meta.loc[0, "ACC days"]
-        animal["age"] = an_meta.loc[0, "Age"]
-        animal["sex"] = an_meta.loc[0, "Sex"]
-        animal["strain"] = an_meta.loc[0, "Strain"]
-        animal["animal"] = animal_name
-    
-    animal = format_data(animal) 
-    return animal
-
-def make_condition_df(condir, condition, metadata):
-    andirs = os.listdir(condir)
-    animals = []
-    for animal_name in andirs:
-        animal_path = condir + "\\" + animal_name
-        animals.append(make_animal_df(animal_path, metadata, animal_name))
-    animals = pd.concat(animals, ignore_index=True)
-    animals["condition"] = condition
-    return animals
-
-# analysis functions
-
-def rolling_frequency_average(data, freq_window, values, keep, index):
-    '''Calculate licking frequency as a rolling average of 
-    Parameters:
-    values - set of columns to calculate rolling average
-    keep - set of columns to keep but not calculate rolling average
-    index - set of columns to index/group by
-    '''
-    group = data.set_index("timestamp").groupby(index)
-    licks = group.rolling(window=pd.to_timedelta(freq_window, unit="ms"))[values].sum()/(freq_window/1000)
-    keep = data.set_index(index)[keep].set_index("timestamp",append=True)
-    data_roll = pd.concat([licks, keep], axis=1).reset_index()
-
-    return data_roll
-
-def resample_align(data, frq, key, keep, index):
-    '''Resample at the given freq. 100ms aligns data without changing values'''
-    gp = pd.Grouper(key=key, freq=pd.offsets.Milli(frq))
-    #append resampler to index group
-    index.append(gp)
-    group = data.groupby(index)
-    keep = group[keep].first()
-    data_sample = keep.reset_index()
-
-    return data_sample
-
-def get_trial_start(data, index, key):
-    data = data.set_index(index)
-    data["trial time"] = data.groupby(index)[key].first()
-    data = data.reset_index()
-    return data
-
-def bin_by_time(data, trial_bin, index, key):
-    gp = pd.Grouper(key=key, freq=trial_bin)
-    index.append(gp)
-    group = data.groupby(index)
-    data = group.first()
-    data = data.reset_index()
-
-def delta(data, index, key):
-    '''calculates time since start of SAT. key is column to use to calculate'''
-    data = data.set_index(index)
-    delta = data[key] - data.sort_values(key).groupby("animal")[key].first() - data.groupby("animal")["acc"].first()
-    data["delta"] = delta
-    return data.reset_index()
-
-def deliverydelta(data, index):
-    '''find start of air delivery (trial start + delay to puff)'''
-    data = data.set_index(index)
-    grouped = data.groupby(index)
-    data["air start"] = grouped["timestamp"].first() + grouped["delay"].first()
-    data["delivery delta"]  = data["timestamp"] - data["air start"]
-    data = data.drop(columns="air start")
-    return data.reset_index()
-
-def drop_bins(data, min_trials, min_blank, min_water, index, key):
-    gp_index = index.copy()
-    gp_index.append(key)
-    group = data.groupby(gp_index)
-    #filter bins with fewer than min_blank blank or min_water water trials
-    counts = group.count().unstack(level=key)
-    cond = (counts.loc[:, ("trial no", "blank")] > min_blank) & (counts.loc[:, ("trial no", "water")] > min_water) 
-    data = data[cond]
-    #filter bins with fewer than min_trials total trials
-    total_group = data.groupby(index) 
-    total_counts = total_group.count()
-    data = data[total_counts > min_trials]
-    data = data.reset_index()
-    return data
+        # Write data rows
+        row_time = -1 * acclimation_time + bin_time / 2
+        for row in final_statistics:
+            avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints = row
+            data_row = [row_time, avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints]
+            writer.writerow(data_row)
+            row_time += bin_time
 
 
 # analysis: traces over entire trial -> rolling window with bin size flexibiliy 
 #           bin over training time -> bin size flexibility
 #           drop trials -> number of trials flexibility
-# plots: all bins average trace plot
 def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank):
-    
+    # do not modify loaded data
+    aa = data.copy()
 
-# plot all traces and average trace for a bin
-if name == "__main__":
+    # calculated time to air puff
+    index = ["condition", "animal","trial no"]
+    data = analysis_functions.puff_delta(aa, index)
+
+    # rolling window average licking frequency
+    # TODO: (moderately) slow (26s on 4 conditions, 10+ animals per condition)
+    keep = ["timestamp", "age", "sex", "strain", "acc", "delivery delta"]
+    values = ["lick", "poke"]
+    index = ["condition", "animal", "trial no", "trial type"]
+    data = analysis_functions.rolling_frequency_average(data, freq_window, values, keep, index)
+
+    # resampling for trial alignment
+    keep = ["timestamp", "lick", "poke", "age", "sex", "strain", "acc"]
+    index = ["condition", "animal", "trial no", "trial type"]
+    data = analysis_functions.resample_align(data, freq_bin, "delivery delta", keep, index)
+
+    #label start of trial at each sample
+    index = ["condition", "animal", "trial no"]
+    data = analysis_functions.get_trial_start(data, index, "timestamp")
+
+    #bin by time (4h bins)
+    index = ["condition", "animal", "trial no", "trial type", "delivery delta"]
+    data = analysis_functions.bin_by_time(data, time_bin, "h", index, "trial time")
+
+    # calulate time bin relative to start of SAT training
+    index = ["condition", "animal", "trial no"]
+    data = analysis_functions.delta(data, index, "trial time")
+
+    # drop bins with fewer than 10 total trials, or with no trials of one kind
+    index = ["condition", "animal", "delta","delivery delta"]
+    key = "trial type"
+    data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
+
+    #convert time bins and trial time to float representations
+    data["Time (hr)"] = data["delta"].astype("timedelta64[h]")
+    data["Time (ms)"] = data["delivery delta"].astype("timedelta64[ms]")
+
+    # number of trials for each timebin
+    index = ["condition", "animal", "delta", "delivery delta"]
+    keep = ["age", "sex", "strain", "acc", "Time (hr)", "Time (ms)"]
+    counts = analysis_functions.trial_counts(data, index, keep, "trial no")
     
+    # mean licking frequencys for each animals for each time bin 
+    keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
+    index = ["condition", "animal", "trial type", "delta", "delivery delta"]
+    value = ["lick"]
+    data_mean = analysis_functions.mean_bin(data_mean, index, value, keep)
+
+    #threshold trials to 200ms before to 2000ms after air puff
+    data_mean = analysis_functions.thresh(data_mean, -200, 2000)
+    
+    #calculate performance for each animal for each time bin
+    index = ["condition", "animal", "delta", "delivery delta"]
+    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
+    perf = analysis_functions.performance(data, index, keep)
+
+    return (data, data_mean, counts, perf)
+
+def generate_trialcount_plot(counts_data):
+    cond = (counts_data["Time (hr)"] < 24) & (counts_data["Time (hr)"] > -24) 
+    g = sns.catplot(counts_data[cond], x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
+    for ax in g.axes.flat:
+        ax.set_ylabel("Number of Trials")
+        ax.set_ylim([0, 200])
+
+def generate_performance_plots(perf_data):
+### Plotting
+    # average performance trace across all timebins
+    # only plot last day of acclimation and first day of SAT
+    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24)
+
+    # plot all timebins average performance trace on the same plot
+    g = sns.relplot(data=perf_data[cond],kind="line", x="Time (ms)", y="lick",col="condition", 
+                    hue="Time (hr)", palette="coolwarm", errorbar="se",err_style="bars", legend="full")
+
+    # add lines at air puff and water delivery
+    for ax in g.axes.flat:
+        ax.axhline(y=0, xmin=0, xmax=1, ls="-", lw=0.75,color="black", zorder=0)
+        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
+        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
+        ax.set_ylim([-10, 10])
+        ax.set_ylabel("Performance")
+
+    # average performance trace by animal
+    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
+    g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
+                    y="lick",col="animal", col_wrap=5,hue="Time (hr)", palette="coolwarm", errorbar=None,legend="full")
+    for ax in g.axes.flat:
+        ax.axhline(y=0, xmin=0, xmax=1, ls="-", lw=0.75,color="black", zorder=0)
+        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
+        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
+
+    # average performance trace by timebin, 4h timebins, with each animals' performance in the background
+    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
+    g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
+                    y="lick",col="Time (hr)", row="condition", errorbar=None, zorder=5)
+    for (train_type, time), ax in g.axes_dict.items():
+        an_cond = perf_data["condition"] == train_type
+        time_cond = perf_data["Time (hr)"] == time
+        sns.lineplot(
+                data=perf_data[cond & an_cond & time_cond], x="Time (ms)", y="lick", hue="animal", 
+                palette=["grey"], alpha=0.5,linewidth=1, ax=ax, legend=False)
+        ax.axhline(y=0, xmin=0, xmax=1, ls="--", lw=0.75,color="black", zorder=0)
+        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
+        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
+
+    # average performance by timebin across all animals
+    index = ["condition", "delta", "delivery delta"]
+    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
+    gp = perf_data.groupby(index)
+    perf_avg = gp["lick"].mean()
+    keep = gp[keep].first()
+    perf_avg = pd.concat([perf_avg, keep], axis=1).reset_index()
+
+    # average time until performance becomes positive from start of air for each timebin
+    cond = (perf_avg["lick"] > 0) & (perf_avg["Time (ms)"] > 100)
+    pt = perf_avg[cond].groupby(["condition", "delta"]).first().reset_index()
+
+    # plot a few bins during acclimation
+    cond = (pt["Time (hr)"] < -4) & (pt["Time (hr)"] > -24)
+    g = sns.catplot(data=pt[cond], kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
+    g.fig.suptitle("Time to Positive Performance", x=0.4, y=1.02)
+    g.set_xlabels("Condition")
+    g.set_ylabels("Time (ms)")    
+
+    # plot a few bins during SAT1
+    cond = (pt["Time (hr)"] < 20) & (pt["Time (hr)"] > 0)
+    g = sns.catplot(data=pt[cond], kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
+    g.fig.suptitle("Time to Positive Performance", x=0.4, y=1.02)
+    g.set_xlabels("Condition")
+    g.set_ylabels("Time (ms)")    
+    cond = (perf_avg["Time (hr)"] < 20) & (perf_avg["Time (hr)"] >= 0) & (perf_avg["Time (ms)"] > 0) & (perf_avg["Time (ms)"] < 1000)
+    pt_puff = perf_avg[cond].sort_values("lick").groupby(["condition", "delta"]).first().reset_index()
+
+    # average time from puff to minimum performance (quantifing dip in performance after air)
+    g = sns.catplot(data=pt_puff, kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
+    g.fig.suptitle("Time to Minimum Performance", x=0.5, y=1.02)
+    g.set_xlabels("Condition")
+    g.set_ylabels("Time (ms)")    
+
+    # average magnitude of minimum performance
+    g = sns.catplot(data=pt_puff, kind="bar", x="condition", y="lick", col="Time (hr)", col_wrap=5)
+    g.fig.suptitle("Magnitude of Minimum Performance", x=0.5, y=1.02)
+    g.set_xlabels("Condition")
+    g.set_ylabels("Performance")    
+    # average licking frequency by timebin across all animals
+    index = ["condition", "delta", "delivery delta", "trial type"]
+    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
+
+def generate_licking_plots(data):
+    index = ["condition", "delta", "delivery delta", "trial type"]
+    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
+
+    gp = data.groupby(index)
+    lick_avg = gp["lick"].mean()
+    keep = gp[keep].first()
+    lick_avg = pd.concat([lick_avg, keep], axis=1).reset_index()
+
+    # time to postive performance and magniutude of maximum licking frequency by trial type and timebin
+    cond = (lick_avg["Time (hr)"] < 20) & (lick_avg["Time (hr)"] > -24) & (lick_avg["Time (ms)"] > 0) & (lick_avg["Time (ms)"] < 1000)
+    pt_puff = lick_avg[cond].sort_values("lick").groupby(["condition", "delta", "trial type"]).first().reset_index()
+
+    sns.catplot(data=pt_puff, kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5, hue="trial type")
+    sns.catplot(data=pt_puff, kind="bar", x="condition", y="lick", col="Time (hr)", col_wrap=5, hue="trial type")
+
+if __name__ == "__main__":
+    default_acc_time = 2
+
+    csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos = get_user_input()
+
+        
+    metadata = pd.read_excel(metadata_file)
+    df = loader.make_condition_df(csv_directory, analysis_directory, metadata, metadata_params[1], default_acc_time)
+
+    freq_window = bin_params[1]
+    freq_bin = bin_params[2]
+    time_bin = bin_params[0]
+    statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials_nos[0], 
+                                                                            min_trials_nos[1], min_trials_nos[2])
+    
+    generate_trialcount_plot(counts)
+    generate_performance_plots(performance)
+    generate_licking_plots(statistics)
+
+    # write data to file
+    # for data, counts, performance: write Animal, Time (hr), Time (ms), lick/trial no(for counts)
+    # name file with condition and type of data
+    # write 3 files (data frames are not really alignable to put columns together meaningfully): 
+    #     condition_lickfreq.xlsx, condition_trialcounts.xlsx, condition_performance.xlsx
