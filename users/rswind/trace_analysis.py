@@ -122,12 +122,12 @@ def get_user_input():
 
     analysis_directory = select_directory("Select directory for analysis files")
 
-    metadata_file = filedialog.askopenfile() 
+    metadata_file = filedialog.askopenfilename() 
 
     # condition_name, acc_col_name
     title = "Training Metadata"
     prompts = ["Condition Name", "Acclimation Column Name (in metadata file)"]
-    initialvalues = [None, None]
+    initialvalues = ["SAT", "ACC days"]
     types = [str, str]
     metadata_params = get_parameters(title, prompts, initialvalues, types)
 
@@ -209,9 +209,9 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     key = "trial type"
     data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
 
-    #convert time bins and trial time to float representations
-    data["Time (hr)"] = data["delta"].astype("timedelta64[h]")
-    data["Time (ms)"] = data["delivery delta"].astype("timedelta64[ms]")
+    # convert time bins and trial time to float representations
+    data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[h]").astype("float")
+    data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
 
     # number of trials for each timebin
     index = ["condition", "animal", "delta", "delivery delta"]
@@ -222,15 +222,15 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
     index = ["condition", "animal", "trial type", "delta", "delivery delta"]
     value = ["lick"]
-    data_mean = analysis_functions.mean_bin(data_mean, index, value, keep)
+    data_mean = analysis_functions.mean_bin(data, index, value, keep)
 
-    #threshold trials to 200ms before to 2000ms after air puff
+    # threshold trials to 200ms before to 2000ms after air puff
     data_mean = analysis_functions.thresh(data_mean, -200, 2000)
     
-    #calculate performance for each animal for each time bin
+    # calculate performance for each animal for each time bin
     index = ["condition", "animal", "delta", "delivery delta"]
     keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
-    perf = analysis_functions.performance(data, index, keep)
+    perf = analysis_functions.performance(data_mean, index, keep)
 
     return (data, data_mean, counts, perf)
 
@@ -240,9 +240,9 @@ def generate_trialcount_plot(counts_data):
     for ax in g.axes.flat:
         ax.set_ylabel("Number of Trials")
         ax.set_ylim([0, 200])
+    return g.fig
 
-def generate_performance_plots(perf_data):
-### Plotting
+def generate_performance_plot(perf_data):
     # average performance trace across all timebins
     # only plot last day of acclimation and first day of SAT
     cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24)
@@ -258,7 +258,13 @@ def generate_performance_plots(perf_data):
         ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
         ax.set_ylim([-10, 10])
         ax.set_ylabel("Performance")
+    return g.fig
 
+#def generate_lickfreq_plot(data):
+
+#def generate_barplots(perf_data):
+
+def generate_performance_plots(perf_data):
     # average performance trace by animal
     cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
     g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
@@ -345,10 +351,10 @@ if __name__ == "__main__":
     default_acc_time = 2
 
     csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos = get_user_input()
-
+    print(metadata_file)
         
     metadata = pd.read_excel(metadata_file)
-    df = loader.make_condition_df(csv_directory, analysis_directory, metadata, metadata_params[1], default_acc_time)
+    df = loader.make_condition_df(csv_directory, metadata_params[0], metadata, metadata_params[1], default_acc_time)
 
     freq_window = bin_params[1]
     freq_bin = bin_params[2]
@@ -356,12 +362,31 @@ if __name__ == "__main__":
     statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials_nos[0], 
                                                                             min_trials_nos[1], min_trials_nos[2])
     
-    generate_trialcount_plot(counts)
-    generate_performance_plots(performance)
-    generate_licking_plots(statistics)
+    cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
+    # raw data for each trial - not really useful to output
+    output_dir = f'{analysis_directory}/{metadata_params[0]}'
+    # statistics.to_csv(f'{output_dir}_raw_data.csv', columns=cols, index=False)
+    mean_statistics.to_csv(f'{output_dir}_lick_frequency.csv', columns=cols, index=False)
+
+    cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "trial no"]
+    counts.to_csv(f'{output_dir}_trial_counts.csv', columns=cols, index=False)
+
+    cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "lick"]
+    performance.to_csv(f'{output_dir}_performance.csv', columns=cols, index=False)
+
+    trialcount_fig = generate_trialcount_plot(counts)
+    trialcount_fig.savefig(f'{output_dir}_num_trials.png')
+
+    perf_fig = generate_performance_plot(performance)
+    perf_fig.savefig(f'{output_dir}_performance.png')
+
+    #generate_licking_plots(statistics)
+
+    
 
     # write data to file
     # for data, counts, performance: write Animal, Time (hr), Time (ms), lick/trial no(for counts)
     # name file with condition and type of data
     # write 3 files (data frames are not really alignable to put columns together meaningfully): 
     #     condition_lickfreq.xlsx, condition_trialcounts.xlsx, condition_performance.xlsx
+    print("Done.")
