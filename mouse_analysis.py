@@ -1,7 +1,7 @@
 #!python3
 
-# TODO why are we printing 0 for performance and the other values when we don't have that many results?
-# TODO make md file on how to download python and other libraries (using pip)
+# TODO why are we printing 0 for performance and the other values when we don't have that many results? for some partitions we are printing 0 trials, even though we should have trials for those partitions, why is that?
+# TODO make a markdown file on how to download python and other libraries (using pip? or us some type of virtual environment? up to you)
 
 import argparse
 import csv
