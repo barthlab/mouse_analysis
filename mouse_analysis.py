@@ -93,7 +93,14 @@ def make_df_from_csv_files(csv_files):
 
         # Extract the MM_DD_YY_T_HH_MM_SS part
         timestamp_str = filename.split(".txt")[1]
-        timestamp = datetime.datetime.strptime(timestamp_str, "%m_%d_%y_T_%H_%M_%S").replace(tzinfo=datetime.timezone.utc)
+        try:
+            timestamp = datetime.datetime.strptime(timestamp_str, "%m_%d_%y_T_%H_%M_%S").replace(tzinfo=datetime.timezone.utc)
+        except:
+            try:
+                timestamp = datetime.datetime.strptime(timestamp_str, "%m_%d_%y~T~%H_%M_%S").replace(tzinfo=datetime.timezone.utc)
+            except:
+                sys.exit("File timestamp not recognized.")
+
 
         # Convert to milliseconds because that is the unit we are using for everything in the backend
         epoch_time = timestamp.timestamp() * milli
