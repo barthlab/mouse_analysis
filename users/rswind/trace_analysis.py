@@ -1,7 +1,12 @@
 #!python3
 # last edit 7/6/2023 Rachel Swindell
 
-import re
+import warnings
+#to suppress seaborn palette warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+#to suppress seaborn error estimation NaN warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
 import os
 import argparse
 import sys
@@ -23,9 +28,7 @@ import analysis_functions
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
-# to run:
-# python3 trace_analysis.py --metadata metadata-file --trial_bin_size bin-size --bin_size bin-size [--group] path-to-data
-# maintain both user-input and console-run options
+# todo: add GUI that allows script to be run again after 1st run
 
 # adapted from QueryDialog in simpledialog.py from tkinter v 8.6
 class MultiPromptDialog(Dialog):
@@ -48,7 +51,6 @@ class MultiPromptDialog(Dialog):
 
             if self.initialvalues[i] is not None:
                 self.entries[i].insert(0, self.initialvalues[i])
-                print(self.initialvalues[i])
                 self.entries[i].select_range(0, END)
 
         return self.entries[0]
@@ -56,7 +58,10 @@ class MultiPromptDialog(Dialog):
     def apply(self):
         self.result = []
         for i in range(len(self.types)):
-            self.result.append(self.types[i](self.entries[i].get()))
+            try:
+                self.result.append(self.types[i](self.entries[i].get()))
+            except:
+                print("Invalid type. Please input a value with type {self.types[i]}")
         return self.result
 
 
@@ -119,10 +124,16 @@ def parse_args():
 def get_user_input():
 
     csv_directory = select_directory("Select directory with CSV files")
+    print(f'Directory with behavior files: {csv_directory}')
 
     analysis_directory = select_directory("Select directory for analysis files")
+    print(f'Directory to output analysis to: {analysis_directory}')
 
-    metadata_file = filedialog.askopenfilename() 
+    metadata_file = filedialog.askopenfilename()
+    if metadata_file == '':
+        print(f'No metatdata file provided')
+        sys.exit(1)
+    print(f'Metadata file: {metadata_file}')
 
     # condition_name, acc_col_name
     title = "Training Metadata"
@@ -130,44 +141,39 @@ def get_user_input():
     initialvalues = ["SAT", "ACC days"]
     types = [str, str]
     metadata_params = get_parameters(title, prompts, initialvalues, types)
+    if metadata_params == None:
+        print(f'No metadata information provided')
+        sys.exit(1)
+    print(f'Condition: {metadata_params[0]}, Acclimation column name: {metadata_params[1]}')
 
     # bin_time_hours, last_x_percent, freq_window, freq_bin
     title = "Bin Size Parameters"
-    prompts = ["Bin size (hours)", "Frequency Rolling Average window size (ms)", "Frequency Bin Size (ms)", "Last percent of day"]
-    initialvalues = [4, 300, 100, 20]
+    prompts = ["Bin size (min)", "Frequency Rolling Average window size (ms)", "Frequency Bin Size (ms)", "Last percent of day"]
+    initialvalues = [240, 300, 100, 20]
     types = [int, int, int, int]
-    bin_params = get_parameters(title, prompts, initialvalues, types)
+    bin_params = []
+    while len(bin_params) != len(initialvalues):
+        bin_params = get_parameters("Input integers: " + title, prompts, initialvalues, types)
+        if bin_params == None:
+            print(f'No bin size information provided.')
+            sys.exit(1)
+    print(bin_params)
+    print(f'bin size: {bin_params[0]} hr, rolling window: {bin_params[1]} ms, freq bin: {bin_params[2]} ms, last percent: {bin_params[3]}')
 
     # min_trials, min_water_trials, min_blank_trials
     title = "Trial number thresholds per bin"
     prompts = ["Minimum total trials", "Minimum water trials", "Minimum blank trials"]
     initialvalues = [10, 1, 1]
     types = [int, int, int]
-    min_trials_nos = get_parameters(title, prompts, initialvalues, types)
+    min_trials_nos = []
+    while len(min_trials_nos) != len(initialvalues):
+        min_trials_nos = get_parameters("Input integers: " + title, prompts, initialvalues, types)
+        if min_trials_nos == None:
+            print(f'No minimum trial information provided.')
+            sys.exit(1)
+    print(f'min number of trials: {min_trials_nos[0]}, min water trials: {min_trials_nos[1]}, min blank trials: {min_trials_nos[2]}')
 
     return csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos
-
-# adapted from code in mouse_analysis.py written by Alex Kiroff
-# TODO: fix to the data/file structure my script needs
-def save_data_to_csv(final_statistics, acclimation_time, bin_time, file_path):
-    # Column labels
-    labels = ["Time Bin", "Avg Water Lick Freq (Hz)", "Avg Blank Lick Freq (Hz)", "Performance", "Num Datapoints"]
-
-    # Open the CSV file for writing
-    with open(file_path, 'w+', newline='') as csv_file:
-        writer = csv.writer(csv_file)
-
-        # Write column labels
-        writer.writerow(labels)
-
-        # Write data rows
-        row_time = -1 * acclimation_time + bin_time / 2
-        for row in final_statistics:
-            avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints = row
-            data_row = [row_time, avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints]
-            writer.writerow(data_row)
-            row_time += bin_time
-
 
 # analysis: traces over entire trial -> rolling window with bin size flexibiliy 
 #           bin over training time -> bin size flexibility
@@ -179,14 +185,14 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     # calculated time to air puff
     index = ["condition", "animal","trial no"]
     data = analysis_functions.puff_delta(aa, index)
-
+    print("... ", end='', flush=True)
     # rolling window average licking frequency
     # TODO: (moderately) slow (26s on 4 conditions, 10+ animals per condition)
     keep = ["timestamp", "age", "sex", "strain", "acc", "delivery delta"]
     values = ["lick", "poke"]
     index = ["condition", "animal", "trial no", "trial type"]
     data = analysis_functions.rolling_frequency_average(data, freq_window, values, keep, index)
-
+    print("... ", end='', flush=True)
     # resampling for trial alignment
     keep = ["timestamp", "lick", "poke", "age", "sex", "strain", "acc"]
     index = ["condition", "animal", "trial no", "trial type"]
@@ -198,19 +204,19 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
 
     #bin by time (4h bins)
     index = ["condition", "animal", "trial no", "trial type", "delivery delta"]
-    data = analysis_functions.bin_by_time(data, time_bin, "h", index, "trial time")
+    data = analysis_functions.bin_by_time(data, time_bin, "min", index, "trial time")
 
     # calulate time bin relative to start of SAT training
     index = ["condition", "animal", "trial no"]
     data = analysis_functions.delta(data, index, "trial time")
-
+    print("... ", end='', flush=True)
     # drop bins with fewer than 10 total trials, or with no trials of one kind
     index = ["condition", "animal", "delta","delivery delta"]
     key = "trial type"
     data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
 
     # convert time bins and trial time to float representations
-    data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[h]").astype("float")
+    data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[m]").astype("float")/60.
     data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
 
     # number of trials for each timebin
@@ -231,24 +237,20 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     index = ["condition", "animal", "delta", "delivery delta"]
     keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
     perf = analysis_functions.performance(data_mean, index, keep)
-
+    print("...\n", end='', flush=True)
     return (data, data_mean, counts, perf)
 
 def generate_trialcount_plot(counts_data):
-    cond = (counts_data["Time (hr)"] < 24) & (counts_data["Time (hr)"] > -24) 
-    g = sns.catplot(counts_data[cond], x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
+    g = sns.catplot(counts_data, x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
+    
     for ax in g.axes.flat:
         ax.set_ylabel("Number of Trials")
         ax.set_ylim([0, 200])
     return g.fig
 
 def generate_performance_plot(perf_data):
-    # average performance trace across all timebins
-    # only plot last day of acclimation and first day of SAT
-    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24)
-
     # plot all timebins average performance trace on the same plot
-    g = sns.relplot(data=perf_data[cond],kind="line", x="Time (ms)", y="lick",col="condition", 
+    g = sns.relplot(data=perf_data,kind="line", x="Time (ms)", y="lick",col="condition", 
                     hue="Time (hr)", palette="coolwarm", errorbar="se",err_style="bars", legend="full")
 
     # add lines at air puff and water delivery
@@ -260,11 +262,20 @@ def generate_performance_plot(perf_data):
         ax.set_ylabel("Performance")
     return g.fig
 
-#def generate_lickfreq_plot(data):
+def generate_lickfreq_plot(data):
+    g = sns.relplot(data=data,kind="line",x="Time (ms)", y="lick", col="Time (hr)",col_wrap=7,
+                    hue="trial type", palette=["green", "red"], hue_order=["water", "blank"], errorbar="se",err_style="bars", legend="full")
 
-#def generate_barplots(perf_data):
-
-def generate_performance_plots(perf_data):
+    # add lines at air puff and water delivery
+    for ax in g.axes.flat:
+        ax.axhline(y=0, xmin=0, xmax=1, ls="-", lw=0.75,color="black", zorder=0)
+        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
+        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
+        ax.set_ylim([0, 12])
+        ax.set_ylabel("Lick Freq (hz)")
+    return g.fig
+        
+def generate_barplots(perf_data):
     # average performance trace by animal
     cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
     g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
@@ -331,37 +342,23 @@ def generate_performance_plots(perf_data):
     index = ["condition", "delta", "delivery delta", "trial type"]
     keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
 
-def generate_licking_plots(data):
-    index = ["condition", "delta", "delivery delta", "trial type"]
-    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
-
-    gp = data.groupby(index)
-    lick_avg = gp["lick"].mean()
-    keep = gp[keep].first()
-    lick_avg = pd.concat([lick_avg, keep], axis=1).reset_index()
-
-    # time to postive performance and magniutude of maximum licking frequency by trial type and timebin
-    cond = (lick_avg["Time (hr)"] < 20) & (lick_avg["Time (hr)"] > -24) & (lick_avg["Time (ms)"] > 0) & (lick_avg["Time (ms)"] < 1000)
-    pt_puff = lick_avg[cond].sort_values("lick").groupby(["condition", "delta", "trial type"]).first().reset_index()
-
-    sns.catplot(data=pt_puff, kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5, hue="trial type")
-    sns.catplot(data=pt_puff, kind="bar", x="condition", y="lick", col="Time (hr)", col_wrap=5, hue="trial type")
-
 if __name__ == "__main__":
     default_acc_time = 2
 
     csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos = get_user_input()
-    print(metadata_file)
-        
+    
+    print("Loading files...")
     metadata = pd.read_excel(metadata_file)
     df = loader.make_condition_df(csv_directory, metadata_params[0], metadata, metadata_params[1], default_acc_time)
 
     freq_window = bin_params[1]
     freq_bin = bin_params[2]
     time_bin = bin_params[0]
+    print("Calculating Statistics... ", end='')
     statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials_nos[0], 
                                                                             min_trials_nos[1], min_trials_nos[2])
     
+    print("Writing data to csv...\n", end='')
     cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
     # raw data for each trial - not really useful to output
     output_dir = f'{analysis_directory}/{metadata_params[0]}'
@@ -374,19 +371,14 @@ if __name__ == "__main__":
     cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "lick"]
     performance.to_csv(f'{output_dir}_performance.csv', columns=cols, index=False)
 
+    print("Making plots... ", end='', flush=True)
     trialcount_fig = generate_trialcount_plot(counts)
     trialcount_fig.savefig(f'{output_dir}_num_trials.png')
-
+    print("... ", end='', flush=True)
     perf_fig = generate_performance_plot(performance)
     perf_fig.savefig(f'{output_dir}_performance.png')
-
-    #generate_licking_plots(statistics)
-
-    
-
-    # write data to file
-    # for data, counts, performance: write Animal, Time (hr), Time (ms), lick/trial no(for counts)
-    # name file with condition and type of data
-    # write 3 files (data frames are not really alignable to put columns together meaningfully): 
-    #     condition_lickfreq.xlsx, condition_trialcounts.xlsx, condition_performance.xlsx
+    print("... ", end='', flush=True)
+    lickfreq_fig = generate_lickfreq_plot(mean_statistics)
+    lickfreq_fig.savefig(f'{output_dir}_lickfreq.png')
+    print("...\n", end='')
     print("Done.")

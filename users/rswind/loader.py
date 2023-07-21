@@ -6,14 +6,15 @@
 
 import re
 import os
+import sys
 
 import pandas as pd
 
 # open and format animal data
 def time_from_file(filename):
     "Convert filename to timestamp for start of trials"
-    datetime = re.findall("\d\d_\d\d_\d\d_T_\d\d_\d\d_\d\d", filename)[0]
-    datetime = datetime.replace("_", "-", 2).replace("_T_", " ").replace("_", ":")
+    datetime = re.findall("\d\d_\d\d_\d\d_?~?T_?~?\d\d_\d\d_\d\d", filename)[0]
+    datetime = datetime.replace("_", "-", 2).replace("~", "-", 2).replace("_T_", " ").replace("_", ":")
     return pd.Timestamp(datetime)
 
 
@@ -83,27 +84,56 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
     #this will load all files in a given directory - should only have the relevant training files
     for f in fs:
         f_path = andir + "\\" + f
-        if (os.path.isfile(f_path)):      
-            animal.append(load_file(f_path))
-
-    animal = pd.concat(animal, ignore_index=True)
-    animal = enumerate_trials(animal)
-    animal = label_trials(animal)
-
-    #load metadata if the animal has it
-    if not (metadata[metadata["Animal ID"] == animal_name].empty):
-        an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
-        animal["acc"] = an_meta.loc[0, acc_col_name]
-        animal["age"] = an_meta.loc[0, "Age"]
-        animal["sex"] = an_meta.loc[0, "Sex"]
-        animal["strain"] = an_meta.loc[0, "Strain"]   
+        if (os.path.isfile(f_path)): 
+            try:     
+                animal.append(load_file(f_path))
+            except UnicodeDecodeError:
+                print(f"Check that only behavior files are in {andir}")
+                sys.exit(1)
+    if animal == []:
+        print(f"{animal_name} has no behavior files")
+        return pd.DataFrame()
     else:
-        print(f"{animal_name}: no metadata")
-        animal["acc"] = default_acc
+        animal = pd.concat(animal, ignore_index=True)
+        animal = enumerate_trials(animal)
+        animal = label_trials(animal)
 
-    animal["animal"] = animal_name
-    animal = format_data(animal) 
-    return animal
+        #load metadata if the animal has it
+        try:
+            metadata[metadata["Animal ID"] == animal_name].empty
+        except KeyError:
+            print("Animal ID column must be named 'Animal ID'")
+            sys.exit(1)
+
+        if not (metadata[metadata["Animal ID"] == animal_name].empty):
+            an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
+            try:
+                animal["acc"] = an_meta.loc[0, acc_col_name]
+            except KeyError:
+                print(f"Number of acclimation days not named {acc_col_name}")
+            try:
+                animal["age"] = an_meta.loc[0, "Age"]
+            except:
+                animal["age"] = pd.NA
+                print(f"{animal_name} Age not in metadata file")
+            try:
+                animal["sex"] = an_meta.loc[0, "Sex"]
+            except KeyError:
+                animal["sex"] = ''
+                print(f"{animal_name} Sex not in metadata file")
+            try:
+                animal["strain"] = an_meta.loc[0, "Strain"]   
+            except KeyError:
+                animal["strain"] = ''
+                print(f"{animal_name} Strain not in metadata file")
+        else:
+            print(f"{animal_name}: no metadata")
+            animal["acc"] = default_acc
+    
+            
+        animal["animal"] = animal_name
+        animal = format_data(animal) 
+        return animal
 
 def make_condition_df(condir, condition, metadata, acc_col_name, default_acc):
     andirs = os.listdir(condir)
