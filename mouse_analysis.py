@@ -289,7 +289,7 @@ def make_graph(final_statistics, acclimation_time, bin_time, file_path):
     # Second plot: Number of Trials (per bin)
     axs[1].plot(time_bins, num_trials, color='black', label="Number of Trials")
     axs[1].set_ylabel("Number of Trials")
-    axs[1].set_ylim([0, 500])
+    axs[1].set_ylim([0, 700])
     axs[1].fill_between(time_bins, 0, num_trials, facecolor='grey', alpha=0.5)
 
     # Third plot: Performance
