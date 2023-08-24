@@ -1,5 +1,5 @@
 #!python3
-
+version = "v1.1"
 # TODO why are we printing 0 for performance and the other values when we don't have that many results? for some partitions we are printing 0 trials, even though we should have trials for those partitions, why is that?
 
 import argparse
@@ -7,9 +7,11 @@ import csv
 import datetime
 import os
 import sys
+import shutil
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.ticker import MultipleLocator
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog
@@ -55,8 +57,6 @@ def get_files_in_dir(directory):
 def get_user_input():
     csv_directory = select_directory("Select directory with CSV files")
 
-    analysis_directory = select_directory("Select directory for analysis files")
-
     while True:
         acclimation_time = validate_pos_float(input("Enter acclimation time (in hours): "))
         if acclimation_time is not None:
@@ -71,12 +71,20 @@ def get_user_input():
         else:
             print("Invalid input. Please enter a valid floating-point number.")
 
-    while True:
-        last_x_percent = validate_last_x_percent(input("Enter the last x percent (0 < x <= 100): "))
-        if last_x_percent is not None:
-            break
-        else:
-            print("Invalid input. Please enter a valid floating-point number between 0 and 100.")
+    last_x_percent = 20 
+
+    # get last x% value from user - not used by anyone in lab (delete?)
+    # while True:
+    #    last_x_percent = validate_last_x_percent(input("Enter the last x percent (0 < x <= 100): "))
+    #    if last_x_percent is not None:
+    #        break
+    #    else:
+    #        print("Invalid input. Please enter a valid floating-point number between 0 and 100.")
+
+    analysis_directory = csv_directory + '/' + f"analysis_{acclimation_time}_{bin_time}{version}"
+    if os.path.exists(analysis_directory):
+        shutil.rmtree(analysis_directory)  
+    os.makedirs(analysis_directory)
 
     return get_files_in_dir(csv_directory), analysis_directory, acclimation_time, bin_time, last_x_percent
 
@@ -181,13 +189,22 @@ def calculate_lick_frq_before_water(trial, start_lick_time, end_lick_time):
 
 
 def calculate_is_water_trial(trial):
-    # If there is a 9 in the third row that means that the code was in the
+    # If there is a 9 in the third column that means that the code was in the
     # no water part of the code, so we know that it was not a water trial
     return 9 not in trial[3].values
 
 
+def check_is_decoupled(df):
+    # If there are 6 columns in the data, the file differentiates between water and stimulus trials,
+    # there is a meaningful distinction that must be checked for
+    return len(df.columns) == 6
 
-def calculate_statistics(trial):
+def calculate_is_stimulus_trial(trial):
+    # If the sixth column exists and doesn't have a 0 that means that the code was in the
+    # stimulus trial part of the code, so we know that it was a stimulus trial
+    return (0 not in trial[5].values)
+
+def calculate_statistics(trial, is_decoupled):
     milli = 1e3
 
     # Time before the water comes out where we want to measure lick frq
@@ -206,7 +223,13 @@ def calculate_statistics(trial):
 
     is_water_trial = calculate_is_water_trial(trial)
 
-    return start_time, lick_frq_before_water, is_water_trial
+    # If not decoupled, a stimulus trial is the same as a water trial
+    is_stimulus_trial = is_water_trial
+
+    if (is_decoupled):
+        is_stimulus_trial = calculate_is_stimulus_trial(trial)
+
+    return start_time, lick_frq_before_water, is_water_trial, is_stimulus_trial
 
 
 
@@ -216,33 +239,57 @@ def bin_by_time(dataframe, ms_bin_time):
 
 
 
-def calculate_final_statistics(bin):
-    lick_frq_water = []
+def calculate_final_statistics(bin, is_decoupled):
+    # If not decoupled, is_stimulus_trial == is_water_trials, so lck_freq_water == lck_freq_stim
+    # If decoupled, they are different, and the relevant comparision is stimulus vs. no stimulus
+    lick_frq_stim = []
     lick_frq_blank = []
     trials_per_bin = len(bin)
+    num_stimwater = 0
+    num_stimdry = 0
+    num_blankwater = 0
+    num_blankdry = 0
 
     for _, row in bin.iterrows():
         start_time = row['start_time']
         lick_frq_before_water = row['lick_frq_before_water']
         is_water_trial = row['is_water_trial']
+        is_stimulus_trial = row['is_stimulus_trial']
 
-        if is_water_trial:
-            lick_frq_water.append(lick_frq_before_water)
+        if is_stimulus_trial:
+            lick_frq_stim.append(lick_frq_before_water)
+            if is_water_trial:
+                num_stimwater += 1
+            else:
+                num_stimdry += 1
         else:
             lick_frq_blank.append(lick_frq_before_water)
+            if is_water_trial:
+                num_blankwater += 1
+            else:
+                num_blankdry += 1
+        
 
-    avg_lick_frq_water = sum(lick_frq_water) / len(lick_frq_water) if lick_frq_water else 0
+    avg_lick_frq_stim = sum(lick_frq_stim) / len(lick_frq_stim) if lick_frq_stim else 0
     avg_lick_frq_blank = sum(lick_frq_blank) / len(lick_frq_blank) if lick_frq_blank else 0
 
-    performance = avg_lick_frq_water - avg_lick_frq_blank
+    performance = avg_lick_frq_stim - avg_lick_frq_blank
 
-    return avg_lick_frq_water, avg_lick_frq_blank, performance, trials_per_bin
+    if is_decoupled: 
+        result = avg_lick_frq_stim, avg_lick_frq_blank, performance, num_stimwater, num_stimdry, num_blankwater, num_blankdry, trials_per_bin
+    else:
+        result = avg_lick_frq_stim, avg_lick_frq_blank, performance, num_stimwater, num_blankdry, trials_per_bin
+    return result
 
 
 
-def save_data_to_csv(final_statistics, acclimation_time, bin_time, file_path):
+def save_data_to_csv(final_statistics, acclimation_time, bin_time, is_decoupled, file_path):
     # Column labels
-    labels = ["Time Bin", "Avg Water Lick Freq (Hz)", "Avg Blank Lick Freq (Hz)", "Performance", "Num Datapoints"]
+    labels = ["Time Bin", "Avg Water Lick Freq (Hz)", "Avg Blank Lick Freq (Hz)", "Performance", 
+              "Stimulus + Water trials", "Stimulus + No Water trials", "Blank + Water trials", "Blank + No Water trials","Trial Number"]
+    # Drop irrelevant labels for non-decoupled analysis
+    if not is_decoupled:
+        del labels[5:7]
 
     # Open the CSV file for writing
     with open(file_path, 'w+', newline='') as csv_file:
@@ -254,8 +301,8 @@ def save_data_to_csv(final_statistics, acclimation_time, bin_time, file_path):
         # Write data rows
         row_time = -1 * acclimation_time + bin_time / 2
         for row in final_statistics:
-            avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints = row
-            data_row = [row_time, avg_lick_frq_water, avg_lick_frq_blank, performance, num_datapoints]
+            data_row = list(row)
+            data_row.insert(0, row_time)
             writer.writerow(data_row)
             row_time += bin_time
 
@@ -264,14 +311,14 @@ def save_data_to_csv(final_statistics, acclimation_time, bin_time, file_path):
 def make_graph(final_statistics, acclimation_time, bin_time, file_path):
     # Extract data columns
     time_bins = []
-    avg_lick_frq_water = []
+    avg_lick_frq_stim = []
     avg_lick_frq_blank = []
     num_trials = []
     performance = []
     row_time = -1 * acclimation_time + bin_time / 2
     for row in final_statistics:
         time_bins.append(row_time)
-        avg_lick_frq_water.append(row[0])
+        avg_lick_frq_stim.append(row[0])
         avg_lick_frq_blank.append(row[1])
         performance.append(row[2])
         num_trials.append(row[3])
@@ -281,7 +328,7 @@ def make_graph(final_statistics, acclimation_time, bin_time, file_path):
     fig, axs = plt.subplots(3, 1, sharex=True, figsize=(8, 10))
 
     # First plot: Licking (hertz)
-    axs[0].plot(time_bins, avg_lick_frq_water, color='green', label="Water Lick Freq (Hz)", marker='o')
+    axs[0].plot(time_bins, avg_lick_frq_stim, color='green', label="Stimulus Lick Freq (Hz)", marker='o')
     axs[0].plot(time_bins, avg_lick_frq_blank, color='red', label="Blank Lick Freq (Hz)", marker='o')
     axs[0].set_ylabel("Licking (Hz)")
     axs[0].set_ylim([0,12])
@@ -301,9 +348,10 @@ def make_graph(final_statistics, acclimation_time, bin_time, file_path):
     
     for ax in axs:
         ax.legend()
-        ax.set_xticks(time_bins)
-        ax.set_xticklabels(time_bins)
         ax.tick_params(labelbottom=True)
+        ax.xaxis.set_major_locator(MultipleLocator(12))
+        ax.xaxis.set_minor_locator(MultipleLocator(6))
+        ax.xaxis.set_major_formatter('{x:.0f}')
         ax.xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator())
 
     # Adjust spacing between subplots
@@ -322,6 +370,8 @@ if __name__ == "__main__":
     bin_time_ms = bin_time_hours * 60 * 60 * 1000
 
     df = make_df_from_csv_files(csv_files)
+    
+    is_decoupled = check_is_decoupled(df)
 
     start_indices = calculate_start_indices(df)
 
@@ -330,8 +380,8 @@ if __name__ == "__main__":
     trial_statistics = []
     for trial in trials:
         if not trial.empty:
-            trial_statistics.append(calculate_statistics(trial))
-    dataframe = pd.DataFrame(trial_statistics, columns=["start_time", "lick_frq_before_water", "is_water_trial"])
+            trial_statistics.append(calculate_statistics(trial, is_decoupled))
+    dataframe = pd.DataFrame(trial_statistics, columns=["start_time", "lick_frq_before_water", "is_water_trial", "is_stimulus_trial"])
     dataframe["start_time"] = pd.to_datetime(dataframe["start_time"], unit="ms")
 
 
@@ -340,23 +390,25 @@ if __name__ == "__main__":
 
     final_bin_statistics = []
     for _, bin_data in binned_trial_statistics:
-        statistics = calculate_final_statistics(bin_data)
+        statistics = calculate_final_statistics(bin_data, is_decoupled)
         final_bin_statistics.append(statistics)
 
-    save_data_to_csv(final_bin_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/bin.csv")
-    make_graph(final_bin_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/bin.png")
+    file_prefix = os.path.basename(csv_files[0]).split(".txt")[0]
+    save_data_to_csv(final_bin_statistics, acclimation_time_hours, bin_time_hours, is_decoupled, f"{analysis_dir}/{file_prefix}_{bin_time_hours}_bins{version}.csv")
+    make_graph(final_bin_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/{file_prefix}_{bin_time_hours}_bins_plot{version}.png")
 
 
     # To use for the last x%
     day_in_milliseconds = 24 * 60 * 60 * 1000
+    day_in_hours = 24
     day_binned_trial_statistics = bin_by_time(dataframe, day_in_milliseconds)
 
     final_day_statistics = []
     for _, day_data in day_binned_trial_statistics:
         start_index = int(len(day_data) * (1 - last_x_percent / 100))
         last_x_percent_of_day = day_data[start_index:]
-        statistics = calculate_final_statistics(last_x_percent_of_day)
+        statistics = calculate_final_statistics(last_x_percent_of_day, is_decoupled)
         final_day_statistics.append(statistics)
 
-    save_data_to_csv(final_day_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/day.csv")
+    save_data_to_csv(final_day_statistics, acclimation_time_hours, day_in_hours, is_decoupled, f"{analysis_dir}/{file_prefix}_last20percent{version}.csv")
     #make_graph(final_day_statistics, acclimation_time_hours, bin_time_hours, f"{analysis_dir}/day.png")
