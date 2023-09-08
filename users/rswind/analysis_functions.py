@@ -4,22 +4,40 @@
 
 import pandas as pd
 
+
+
 def rolling_frequency_average(data, freq_window, values, keep, index):
-    '''Calculate licking frequency as a rolling average of 
+    '''Calculate licking frequency across index groups as a time-based rolling average and return as a dataframe.
+
+    Mutually exclusive with resample_align.
+
     Parameters:
-    values - set of columns to calculate rolling average
-    keep - set of columns to keep but not calculate rolling average
-    index - set of columns to index/group by
+    data --- data frame containing trial data. Must contain all of the columns in values, keep, and index
+    freq_window --- length of window to calculate rolling window with in ms (int)
+    values --- list of columns to calculate rolling average
+    keep --- list of columns to keep but not calculate rolling average
+    index --- list of columns to index/group by
     '''
     group = data.set_index("timestamp").groupby(index)
-    licks = group.rolling(window=pd.to_timedelta(freq_window, unit="ms"))[values].sum()/(freq_window/1000)
+    licks = group.rolling(window=pd.to_timedelta(freq_window, unit="ms"), closed="right")[values].sum()/(freq_window/1000)
     keep = data.set_index(index)[keep].set_index("timestamp",append=True)
     data_roll = pd.concat([licks, keep], axis=1).reset_index()
 
     return data_roll
 
+
+# TODO: does not take a 
 def resample_align(data, frq, key, keep, index):
-    '''Resample at the given freq. 100ms aligns data without changing values'''
+    '''Resample data across index values into the given time-based bins.
+    
+    Mutually exclusive with rolling_frequency_average. 
+
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in values, keep, and index
+    frq --- bin size in milliseconds. 100ms (base sample frequency) aligns samples across trials without changing values
+   
+    Resample at the given freq. 100ms aligns data without changing values'''
+
     gp = pd.Grouper(key=key, freq=pd.offsets.Milli(frq))
     #append resampler to index group
     index.append(gp)
@@ -36,6 +54,8 @@ def get_trial_start(data, index, key):
     return data
 
 def bin_by_time(data, bin_size, bin_unit, index, key):
+
+    
     gp = pd.Grouper(key=key, freq=pd.to_timedelta(bin_size, unit=bin_unit))
     index = index.copy()
     index.append(gp)

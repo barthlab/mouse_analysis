@@ -1,5 +1,5 @@
 #!python3
-# last edit 7/6/2023 Rachel Swindell
+# last edit 09/05/2023 Rachel Swindell
 
 import warnings
 #to suppress seaborn palette warnings
@@ -28,7 +28,12 @@ import analysis_functions
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
-# todo: add GUI that allows script to be run again after 1st run
+# TODO: output number of blank and water trials in an epoch in addition to the total number of trials
+# TODO: implement last 20% analysis
+# TODO: implement inter-trial interval analysis and epoch analysis
+
+# TODO: add GUI that allows script to be run again after 1st run if run with GUI (not if run from command line)
+# TODO: add option to output by-animal data?
 
 # adapted from QueryDialog in simpledialog.py from tkinter v 8.6
 class MultiPromptDialog(Dialog):
@@ -75,28 +80,37 @@ def select_directory(prompt):
 def get_parameters(title, prompts, initalvalues, types):
     d = MultiPromptDialog(title, prompts, initalvalues, types)
     return d.result
-
-# read + interpret console commands
-# adapted from code in mouse_analysis.py written by Alex Kiroff
+ 
+# adapted from code written by Alex Kiroff
 def parse_args():
-    #default_acclimation_time = 48  # hours
+    '''Read, interpret, and return console commands.'''
+    default_acclimation = "ACC days"
     default_bin_time = 4  # hours
     default_trial_bin = 300 # ms
     default_last_x_percent = 20 # percent
+    default_trials = 0
+    default_water_trials = 1
+    default_blank_trials = 1
+    default_condition = "SAT1"
 
     parser = argparse.ArgumentParser(description="Advanced mouse behavior analysis")
-    #parser.add_argument("--animal_name", required=True, type=str, help="Name of the animal, to name the output files")
-    parser.add_argument("--trial_bin", required=True, type=float, default=default_trial_bin, help="Licking frequency bin size in ms (default: {default_trial_bin})")
-    #parser.add_argument("--csv_files", required=True, type=str, nargs="+", help="In order paths to the CSV files")
-    parser.add_argument("--metadata", required=True, type=str, help="Path to file with animal metadata")
-    #parser.add_argument("--acclimation_time", type=float, default=default_acclimation_time, help=f"Acclimation time in hours (default: {default_acclimation_time})")
-    parser.add_argument("--bin_time", type=float, default=default_bin_time, help=f"Bin time in hours (default: {default_bin_time})")
-    parser.add_argument("--last_x_percent", type=float, default=default_last_x_percent, help=f"Percentage of data to consider (0 < last_x_percent < 100) (default: {default_last_x_percent})")
-
+    parser.add_argument("condition_path", type=str, nargs="?", help="Path to directory with data files")
+    parser.add_argument("output_path", type=str, nargs="?", help="Path to directory to output analysis to")
+    parser.add_argument("--noUI", action="store_true", help="Run from command line, if present")
+    parser.add_argument("-r", "--rolling", action="store_true", help="Use rolling window instead of licking frequency bins, if present")
+    parser.add_argument("-n", "--condition_name", type=str, default=default_condition, help=f"Name of condition type (default: {default_condition})")
+    parser.add_argument("-t", "--trial_bin", type=float, default=default_trial_bin, help=f"Licking frequency bin size in ms (default: {default_trial_bin})")
+    parser.add_argument("-m", "--metadata", type=str, help="Path to file with animal metadata")
+    parser.add_argument("-a", "--acclimation_time", type=str, default=default_acclimation, help=f"Name of column in metadata file with acclimation times (default: {default_acclimation})")
+    parser.add_argument("-b", "--bin_time", type=float, default=default_bin_time, help=f"Bin time in hours (default: {default_bin_time})")
+    parser.add_argument("-p", "--last_x_percent", type=float, default=default_last_x_percent, help=f"Percentage of data to consider by day (0 < last_x_percent < 100) (default: {default_last_x_percent})")
+    parser.add_argument("-i", "--min_trials", type=float, default=default_bin_time, help=f"Minimum number of trials in a bin (default: {default_trials})")
+    parser.add_argument("-w", "--min_water_trials", type=float, default=default_bin_time, help=f"Minimum number of water trials in a bin (default: {default_water_trials})")
+    parser.add_argument("-k", "--min_blank_trials", type=float, default=default_bin_time, help=f"Minimum number of blank trials in a bin (default: {default_blank_trials})")
     parsed = parser.parse_args()
 
     # Check if all csv_files are valid files
-    for csv_file in parsed.csv_files:
+    '''for csv_file in parsed.csv_files:
         if not os.path.isfile(csv_file):
             parser.error(f"The provided CSV file '{csv_file}' does not exist.")
 
@@ -115,14 +129,12 @@ def parse_args():
     # Check if last_x_percent is in the range (0, 100)
     if not 0 < parsed.last_x_percent < 100:
         parser.error("last_x_percent must be in the range (0, 100).")
-
+    '''
     return parsed
 
-
-# adapted from code in mouse_analysis.py written by Alex Kiroff
-# TODO: fix to the parameters my script need
+# adapted from code written by Alex Kiroff
 def get_user_input():
-
+    '''Read, interpret, and return parameters provided by user.'''
     csv_directory = select_directory("Select directory with CSV files")
     print(f'Directory with behavior files: {csv_directory}')
 
@@ -157,8 +169,7 @@ def get_user_input():
         if bin_params == None:
             print(f'No bin size information provided.')
             sys.exit(1)
-    print(bin_params)
-    print(f'bin size: {bin_params[0]} hr, rolling window: {bin_params[1]} ms, freq bin: {bin_params[2]} ms, last percent: {bin_params[3]}')
+    print(f'bin size: {bin_params[0]} min, rolling window: {bin_params[1]} ms, freq bin: {bin_params[2]} ms, last percent: {bin_params[3]}')
 
     # min_trials, min_water_trials, min_blank_trials
     title = "Trial number thresholds per bin"
@@ -175,47 +186,67 @@ def get_user_input():
 
     return csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos
 
-# analysis: traces over entire trial -> rolling window with bin size flexibiliy 
-#           bin over training time -> bin size flexibility
-#           drop trials -> number of trials flexibility
-def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank):
+def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank, ui):
+    '''Computes licking frequency across trial and returns a 4-ple of dataframes: raw licking frequency, mean licking frequency, counts, and performance.
+    
+    Parameters provide flexibility in a multiple ways for both across-trial and across-training binning.
+
+    Parameters:
+    data --- data to be analyzed
+    freq_window --- size of window for rolling window analysis across a trial
+    freq_bin --- size of bin for discrete bin analysis across a trial
+    time_bin --- size of bin for multi-trial binning over entire training
+    min_trials --- minimum total number of trials to keep a bin
+    min_water --- minimum number of water trials to keep a bin
+    min_blank --- minimum number of blank trials to keep a bin
+    ui --- whether to print progress updates to the console
+    
+    Output: 4-ple of dataframes containing licking frequency for all trials, mean licking frequency, 
+            count of the number of trials, and performance (licking to stimulus - licking to blank) in each bin, repsectively'''
     # do not modify loaded data
-    aa = data.copy()
+    df = data.copy()
 
     # calculated time to air puff
     index = ["condition", "animal","trial no"]
-    data = analysis_functions.puff_delta(aa, index)
-    print("... ", end='', flush=True)
+    data = analysis_functions.puff_delta(df, index)
+
+    if ui: print("... ", end='', flush=True)
+
     # rolling window average licking frequency
-    # TODO: (moderately) slow (26s on 4 conditions, 10+ animals per condition)
     keep = ["timestamp", "age", "sex", "strain", "acc", "delivery delta"]
     values = ["lick", "poke"]
     index = ["condition", "animal", "trial no", "trial type"]
     data = analysis_functions.rolling_frequency_average(data, freq_window, values, keep, index)
-    print("... ", end='', flush=True)
+    
+    if ui: print("... ", end='', flush=True)
+
     # resampling for trial alignment
+    # if discrete binning instead of rolling window is used, also bins samples across trial
     keep = ["timestamp", "lick", "poke", "age", "sex", "strain", "acc"]
     index = ["condition", "animal", "trial no", "trial type"]
     data = analysis_functions.resample_align(data, freq_bin, "delivery delta", keep, index)
 
-    #label start of trial at each sample
+    # label start of trial at each sample
     index = ["condition", "animal", "trial no"]
     data = analysis_functions.get_trial_start(data, index, "timestamp")
 
-    #bin by time (4h bins)
+    # bin by time
     index = ["condition", "animal", "trial no", "trial type", "delivery delta"]
     data = analysis_functions.bin_by_time(data, time_bin, "min", index, "trial time")
 
     # calulate time bin relative to start of SAT training
     index = ["condition", "animal", "trial no"]
     data = analysis_functions.delta(data, index, "trial time")
-    print("... ", end='', flush=True)
-    # drop bins with fewer than 10 total trials, or with no trials of one kind
+
+    if ui: print("... ", end='', flush=True)
+    
+    # drop bins with fewer than the thresholded number of total, water, or blank trials
     index = ["condition", "animal", "delta","delivery delta"]
     key = "trial type"
     data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
 
     # convert time bins and trial time to float representations
+    # important for plotting times
     data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[m]").astype("float")/60.
     data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
 
@@ -224,7 +255,7 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     keep = ["age", "sex", "strain", "acc", "Time (hr)", "Time (ms)"]
     counts = analysis_functions.trial_counts(data, index, keep, "trial no")
     
-    # mean licking frequencys for each animals for each time bin 
+    # mean licking frequencies for each animals for each time bin 
     keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
     index = ["condition", "animal", "trial type", "delta", "delivery delta"]
     value = ["lick"]
@@ -237,10 +268,15 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     index = ["condition", "animal", "delta", "delivery delta"]
     keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
     perf = analysis_functions.performance(data_mean, index, keep)
-    print("...\n", end='', flush=True)
+
+    if ui: print("...\n", end='', flush=True)
+    
     return (data, data_mean, counts, perf)
 
 def generate_trialcount_plot(counts_data):
+    '''Plot average number of trials and return the figure.
+    
+    Creates an individual plot for each condition. Plots average number of trials per bin vs time bins in training time.'''
     g = sns.catplot(counts_data, x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
     
     for ax in g.axes.flat:
@@ -249,6 +285,10 @@ def generate_trialcount_plot(counts_data):
     return g.fig
 
 def generate_performance_plot(perf_data):
+    '''Plot average performance (stimulus - blank) and return the figure.
+    
+    Creates an individual plot for each condition. For a condition, plots average performance (stimulus licking frequecny - blank licking frequency)
+    vs the trial time for each time bin in the training time.'''
     # plot all timebins average performance trace on the same plot
     g = sns.relplot(data=perf_data,kind="line", x="Time (ms)", y="lick",col="condition", 
                     hue="Time (hr)", palette="coolwarm", errorbar="se",err_style="bars", legend="full")
@@ -263,6 +303,9 @@ def generate_performance_plot(perf_data):
     return g.fig
 
 def generate_lickfreq_plot(data):
+    '''Plot average lick frequency for stimulus and blank trials and return the figure.
+     
+      Creates indiviudal plots for each time bin across the training time. Plots average frequency values vs the trial time for each time bin.'''
     g = sns.relplot(data=data,kind="line",x="Time (ms)", y="lick", col="Time (hr)",col_wrap=7,
                     hue="trial type", palette=["green", "red"], hue_order=["water", "blank"], errorbar="se",err_style="bars", legend="full")
 
@@ -276,6 +319,10 @@ def generate_lickfreq_plot(data):
     return g.fig
         
 def generate_barplots(perf_data):
+    '''Plot various performance measures.
+    
+    Unused plotting code that could be useful as different ways of visualizing data in the future. Returns void.'''
+
     # average performance trace by animal
     cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
     g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
@@ -338,31 +385,59 @@ def generate_barplots(perf_data):
     g.fig.suptitle("Magnitude of Minimum Performance", x=0.5, y=1.02)
     g.set_xlabels("Condition")
     g.set_ylabels("Performance")    
-    # average licking frequency by timebin across all animals
-    index = ["condition", "delta", "delivery delta", "trial type"]
-    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
 
 if __name__ == "__main__":
-    default_acc_time = 2
-
-    csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos = get_user_input()
+    default_acc_time = 2 # Animals are assumed to be acclimated for 2 days if no acclimation time is provided
     
-    print("Loading files...")
+    args = parse_args()
+    if args.noUI:
+        csv_directory = args.condition_path
+        analysis_directory = args.output_path
+        metadata_file = args.metadata
+        condition_name = args.condition_name
+        acc_col_name = args.acclimation_time
+        time_bin = args.bin_time * 60 # convert to mins
+
+        if args.rolling:
+            freq_window = args.trial_bin
+            freq_bin = 100
+
+        else:
+            freq_window = 100
+            freq_bin = args.trial_bin
+
+        last_percent = args.last_x_percent
+        min_trials = args.min_trials
+        min_water_trials = args.min_water_trials
+        min_blank_trials = args.min_blank_trials
+
+    else:
+        csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos = get_user_input()
+        condition_name, acc_col_name = metadata_params[0], metadata_params[1]
+        time_bin, freq_window, freq_bin, last_percent = bin_params[0], bin_params[1], bin_params[2], bin_params[3]
+        min_trials, min_water_trials, min_blank_trials = min_trials_nos[0], min_trials_nos[1], min_trials_nos[2]
+
+    if not args.noUI: 
+        print("Loading files...")
+
     metadata = pd.read_excel(metadata_file)
-    df = loader.make_condition_df(csv_directory, metadata_params[0], metadata, metadata_params[1], default_acc_time)
+    df = loader.make_condition_df(csv_directory, condition_name, metadata, acc_col_name, default_acc_time)
 
-    freq_window = bin_params[1]
-    freq_bin = bin_params[2]
-    time_bin = bin_params[0]
-    print("Calculating Statistics... ", end='')
-    statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials_nos[0], 
-                                                                            min_trials_nos[1], min_trials_nos[2])
     
-    print("Writing data to csv...\n", end='')
-    cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
-    # raw data for each trial - not really useful to output
-    output_dir = f'{analysis_directory}/{metadata_params[0]}'
+    if not args.noUI: 
+        print("Calculating Statistics... ", end='')
+
+    statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials, 
+                                                                            min_water_trials, min_blank_trials, (not args.noUI))
+    
+    if not args.noUI: print("Writing data to csv...\n", end='')
+
+    output_dir = f'{analysis_directory}/{condition_name}'
+
+    # raw data for each trial - not useful to output
     # statistics.to_csv(f'{output_dir}_raw_data.csv', columns=cols, index=False)
+
+    cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
     mean_statistics.to_csv(f'{output_dir}_lick_frequency.csv', columns=cols, index=False)
 
     cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "trial no"]
@@ -371,14 +446,19 @@ if __name__ == "__main__":
     cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "lick"]
     performance.to_csv(f'{output_dir}_performance.csv', columns=cols, index=False)
 
-    print("Making plots... ", end='', flush=True)
+    if not args.noUI: print("Making plots... ", end='', flush=True)
+
     trialcount_fig = generate_trialcount_plot(counts)
     trialcount_fig.savefig(f'{output_dir}_num_trials.png')
-    print("... ", end='', flush=True)
+
+    if not args.noUI: print("... ", end='', flush=True)
+
     perf_fig = generate_performance_plot(performance)
     perf_fig.savefig(f'{output_dir}_performance.png')
-    print("... ", end='', flush=True)
+
+    if not args.noUI: print("... ", end='', flush=True)
+
     lickfreq_fig = generate_lickfreq_plot(mean_statistics)
     lickfreq_fig.savefig(f'{output_dir}_lickfreq.png')
-    print("...\n", end='')
-    print("Done.")
+
+    if not args.noUI: print("...\nDone.\n", end='')
