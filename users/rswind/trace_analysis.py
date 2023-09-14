@@ -186,16 +186,16 @@ def get_user_input():
 
     return csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos
 
-def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank, ui):
+def pre_analysis(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank, ui):
     '''Computes licking frequency across trial and returns a 4-ple of dataframes: raw licking frequency, mean licking frequency, counts, and performance.
     
     Parameters provide flexibility in a multiple ways for both across-trial and across-training binning.
 
     Parameters:
     data --- data to be analyzed
-    freq_window --- size of window for rolling window analysis across a trial
-    freq_bin --- size of bin for discrete bin analysis across a trial
-    time_bin --- size of bin for multi-trial binning over entire training
+    freq_window --- size of window for rolling window analysis across a trial (in milliseconds)
+    freq_bin --- size of bin for discrete bin analysis across a trial (in milliseconds)
+    time_bin --- size of bin for multi-trial binning over entire training (in minutes)
     min_trials --- minimum total number of trials to keep a bin
     min_water --- minimum number of water trials to keep a bin
     min_blank --- minimum number of blank trials to keep a bin
@@ -240,13 +240,23 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
 
     if ui: print("... ", end='', flush=True)
     
+    # group trials by previous trial identity, for trial contingency analysis
+    index = ["condition", "animal", "trial no"]
+    key = "trial type"
+    (prev_blank, prev_water) = analysis_functions.bin_prev_identity(data, index, key) 
+
+    if ui: print("...\n", end='', flush=True)
+    
+    return (data, prev_blank, prev_water)
+
+def aggregate_analysis(data,min_trials, min_blank, min_water):
     # drop bins with fewer than the thresholded number of total, water, or blank trials
     index = ["condition", "animal", "delta","delivery delta"]
     key = "trial type"
     data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
 
     # convert time bins and trial time to float representations
-    # important for plotting times
+    # works better in pre-analysis but cant be moved because of drop_bins functionality
     data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[m]").astype("float")/60.
     data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
 
@@ -268,10 +278,7 @@ def calculate_statistics(data, freq_window, freq_bin, time_bin, min_trials, min_
     index = ["condition", "animal", "delta", "delivery delta"]
     keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
     perf = analysis_functions.performance(data_mean, index, keep)
-
-    if ui: print("...\n", end='', flush=True)
-    
-    return (data, data_mean, counts, perf)
+    return (data_mean, counts, perf)
 
 def generate_trialcount_plot(counts_data):
     '''Plot average number of trials and return the figure.
@@ -317,74 +324,6 @@ def generate_lickfreq_plot(data):
         ax.set_ylim([0, 12])
         ax.set_ylabel("Lick Freq (hz)")
     return g.fig
-        
-def generate_barplots(perf_data):
-    '''Plot various performance measures.
-    
-    Unused plotting code that could be useful as different ways of visualizing data in the future. Returns void.'''
-
-    # average performance trace by animal
-    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
-    g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
-                    y="lick",col="animal", col_wrap=5,hue="Time (hr)", palette="coolwarm", errorbar=None,legend="full")
-    for ax in g.axes.flat:
-        ax.axhline(y=0, xmin=0, xmax=1, ls="-", lw=0.75,color="black", zorder=0)
-        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
-        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
-
-    # average performance trace by timebin, 4h timebins, with each animals' performance in the background
-    cond = (perf_data["Time (hr)"] < 24) & (perf_data["Time (hr)"] > -24) 
-    g = sns.relplot(data=perf_data[cond],kind="line",x="Time (ms)", 
-                    y="lick",col="Time (hr)", row="condition", errorbar=None, zorder=5)
-    for (train_type, time), ax in g.axes_dict.items():
-        an_cond = perf_data["condition"] == train_type
-        time_cond = perf_data["Time (hr)"] == time
-        sns.lineplot(
-                data=perf_data[cond & an_cond & time_cond], x="Time (ms)", y="lick", hue="animal", 
-                palette=["grey"], alpha=0.5,linewidth=1, ax=ax, legend=False)
-        ax.axhline(y=0, xmin=0, xmax=1, ls="--", lw=0.75,color="black", zorder=0)
-        ax.axvline(x=0, ymin=0, ymax=1, ls="--", color="lightgrey", zorder=0)
-        ax.axvline(x=1000, ymin=0, ymax=1, ls="--", color="navy", alpha=0.5, zorder=0)
-
-    # average performance by timebin across all animals
-    index = ["condition", "delta", "delivery delta"]
-    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
-    gp = perf_data.groupby(index)
-    perf_avg = gp["lick"].mean()
-    keep = gp[keep].first()
-    perf_avg = pd.concat([perf_avg, keep], axis=1).reset_index()
-
-    # average time until performance becomes positive from start of air for each timebin
-    cond = (perf_avg["lick"] > 0) & (perf_avg["Time (ms)"] > 100)
-    pt = perf_avg[cond].groupby(["condition", "delta"]).first().reset_index()
-
-    # plot a few bins during acclimation
-    cond = (pt["Time (hr)"] < -4) & (pt["Time (hr)"] > -24)
-    g = sns.catplot(data=pt[cond], kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
-    g.fig.suptitle("Time to Positive Performance", x=0.4, y=1.02)
-    g.set_xlabels("Condition")
-    g.set_ylabels("Time (ms)")    
-
-    # plot a few bins during SAT1
-    cond = (pt["Time (hr)"] < 20) & (pt["Time (hr)"] > 0)
-    g = sns.catplot(data=pt[cond], kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
-    g.fig.suptitle("Time to Positive Performance", x=0.4, y=1.02)
-    g.set_xlabels("Condition")
-    g.set_ylabels("Time (ms)")    
-    cond = (perf_avg["Time (hr)"] < 20) & (perf_avg["Time (hr)"] >= 0) & (perf_avg["Time (ms)"] > 0) & (perf_avg["Time (ms)"] < 1000)
-    pt_puff = perf_avg[cond].sort_values("lick").groupby(["condition", "delta"]).first().reset_index()
-
-    # average time from puff to minimum performance (quantifing dip in performance after air)
-    g = sns.catplot(data=pt_puff, kind="bar", x="condition", y="Time (ms)", col="Time (hr)", col_wrap=5)
-    g.fig.suptitle("Time to Minimum Performance", x=0.5, y=1.02)
-    g.set_xlabels("Condition")
-    g.set_ylabels("Time (ms)")    
-
-    # average magnitude of minimum performance
-    g = sns.catplot(data=pt_puff, kind="bar", x="condition", y="lick", col="Time (hr)", col_wrap=5)
-    g.fig.suptitle("Magnitude of Minimum Performance", x=0.5, y=1.02)
-    g.set_xlabels("Condition")
-    g.set_ylabels("Performance")    
 
 if __name__ == "__main__":
     default_acc_time = 2 # Animals are assumed to be acclimated for 2 days if no acclimation time is provided
@@ -427,24 +366,30 @@ if __name__ == "__main__":
     if not args.noUI: 
         print("Calculating Statistics... ", end='')
 
-    statistics, mean_statistics, counts, performance = calculate_statistics(df, freq_window, freq_bin, time_bin, min_trials, 
-                                                                            min_water_trials, min_blank_trials, (not args.noUI))
+    data, prev_blank, prev_water = pre_analysis(df, freq_window, freq_bin, time_bin, (not args.noUI))
+    mean_statistics, counts, performance = aggregate_analysis(data, min_trials, min_blank_trials, min_water_trials)
+    prev_blank_stats, prev_blank_counts, prev_blank_perf = aggregate_analysis(prev_blank, min_trials, min_blank_trials, min_water_trials)
+    prev_water_stats, prev_water_counts, prev_water_perf = aggregate_analysis(prev_water, min_trials, min_blank_trials, min_water_trials)
     
     if not args.noUI: print("Writing data to csv...\n", end='')
 
-    output_dir = f'{analysis_directory}/{condition_name}'
-
-    # raw data for each trial - not useful to output
-    # statistics.to_csv(f'{output_dir}_raw_data.csv', columns=cols, index=False)
+    output_dir = f'{analysis_directory}/{condition_name}/stats/{condition_name}'
+    output_prev = f'{analysis_directory}/{condition_name}/prev_stats/{condition_name}'
 
     cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
     mean_statistics.to_csv(f'{output_dir}_lick_frequency.csv', columns=cols, index=False)
+    prev_blank_stats.to_csv(f'{output_prev}_prevblank_lick_frequency.csv', columns=cols, index=False)
+    prev_water_stats.to_csv(f'{output_prev}_prevwater_lick_frequency.csv', columns=cols, index=False)
 
     cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "trial no"]
     counts.to_csv(f'{output_dir}_trial_counts.csv', columns=cols, index=False)
+    prev_blank_counts.to_csv(f'{output_prev}_prevblank_trial_counts.csv', columns=cols, index=False)
+    prev_water_counts.to_csv(f'{output_prev}_prevwater_trial_counts.csv', columns=cols, index=False)
 
     cols = ["condition", "sex", "age", "strain", "animal", "Time (hr)", "Time (ms)", "lick"]
     performance.to_csv(f'{output_dir}_performance.csv', columns=cols, index=False)
+    prev_blank_perf.to_csv(f'{output_prev}_prevblank_performance.csv', columns=cols, index=False)
+    prev_water_perf.to_csv(f'{output_prev}_prevwater_performance.csv', columns=cols, index=False)
 
     if not args.noUI: print("Making plots... ", end='', flush=True)
 

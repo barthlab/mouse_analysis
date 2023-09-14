@@ -1,10 +1,11 @@
 # Functions for trace analysis
-# Last updated: 7/7/2023
+# Last updated: 09/14/2023 (adding function descriptions)
 # Author: Rachel Swindell
 
 import pandas as pd
 
-
+# TODO: make functions fully generic or specific to this analysis (ie requiring specific column names)
+# which is easier to debug long-term?
 
 def rolling_frequency_average(data, freq_window, values, keep, index):
     '''Calculate licking frequency across index groups as a time-based rolling average and return as a dataframe.
@@ -26,17 +27,22 @@ def rolling_frequency_average(data, freq_window, values, keep, index):
     return data_roll
 
 
-# TODO: does not take a 
+# TODO: not currently usable for binning - doesnt ask for set of columns to calculate average on
+# add values
 def resample_align(data, frq, key, keep, index):
     '''Resample data across index values into the given time-based bins.
     
     Mutually exclusive with rolling_frequency_average. 
 
     Parameters:
-    data --- data frame containing trial data. Must contain all of the columns in values, keep, and index
+    data --- data frame containing trial data. Must contain all of the columns in key, keep, and index
     frq --- bin size in milliseconds. 100ms (base sample frequency) aligns samples across trials without changing values
+    key --- name of column to resample by
+    keep --- list of columns to keep but not calculate average
+    index --- list of columns to index/group by
    
-    Resample at the given freq. 100ms aligns data without changing values'''
+    Resample at the given freq. If index is a set of columns that puts each sample into its own unique group, 
+    a 100ms frequency aligns data without changing values'''
 
     gp = pd.Grouper(key=key, freq=pd.offsets.Milli(frq))
     #append resampler to index group
@@ -48,31 +54,70 @@ def resample_align(data, frq, key, keep, index):
     return data_sample
 
 def get_trial_start(data, index, key):
+    '''Creates a columns with first row of a given column row across all samples when grouped by a given index of columns.
+
+        Used to copy timestamp at trial initation across all samples in a trial.
+
+       Parameters:
+       data --- data frame containing trial data. Must contain all of the columns in index and key
+       index --- list of columns to group data by
+       key --- column to take start time value from'''
+
     data = data.set_index(index)
     data["trial time"] = data.groupby(index)[key].first()
     data = data.reset_index()
     return data
 
-def bin_by_time(data, bin_size, bin_unit, index, key):
 
+def bin_by_time(data, bin_size, bin_unit, index, key):
+    '''Groups trials by time in given size and unit, and returns data with key column replaced with time bin
     
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in index and key
+    bin_size --- size of bin to group by, in bin_unit (int)
+    bin_unit --- unit of bin to group by (e.g. hr, min) (string compatible with pandas timedelta)
+    index --- list of columns to group data by. In order to keep all rows, needs to be specific enough that each row is a unique group
+    key --- column with trial starts to group with, replaced with time bin'''
+
+    # TimeGrouper object on key
     gp = pd.Grouper(key=key, freq=pd.to_timedelta(bin_size, unit=bin_unit))
+    # list (copy so input list is not destructively modified)
     index = index.copy()
     index.append(gp)
+    # group original data by all columns specified and time groups generated with time grouper object
     group = data.groupby(index)
+    # keeps first (and usually only) row in each group but writes time group to key
     data = group.first()
     data = data.reset_index()
     return data
 
+# TODO: make fully generic
 def delta(data, index, key):
-    '''calculates time since start of SAT. key is column to use to calculate'''
+    '''Calculates time from start of SAT to trial and returns data with new column 'delta'.
+    
+    bin_by_time should be run first to get trial start times
+
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in index and key
+    index --- list of columns to group data by
+    key --- column with bin times to use for calculation'''
+
     data = data.set_index(index)
     delta = data[key] - data.sort_values(key).groupby("animal")[key].first() - data.groupby("animal")["acc"].first()
     data["delta"] = delta
     return data.reset_index()
 
+# TODO: make generic
 def puff_delta(data, index):
-    '''find start of air delivery (trial start + delay to puff)'''
+    '''Caluculates time from sample in a trial to air delivery in that trial and returns data with new column 'delivery delta'.
+    
+    Data must have 'timestamp' column indicating sample recording time to calculate puff delta.
+
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in index and 'timestamp' column
+    index --- list of columns to group data by
+    '''
+
     data = data.set_index(index)
     grouped = data.groupby(index)
     data["air start"] = grouped["timestamp"].first() + grouped["delay"].first()
@@ -80,7 +125,44 @@ def puff_delta(data, index):
     data = data.drop(columns="air start")
     return data.reset_index()
 
+# TODO: make generic
+def bin_prev_identity(data, key, index):
+    '''Returns tuple of all trials where the previous trial was blank and trials where the previous trial was stimulus.
+       
+       Parameters:
+       data --- data frame containing trial data. Must contain all of the columns in index and key
+       index --- list of columns to group data by
+       key --- column to take trial labels from'''
+    # get first sample of each trial
+    gp = data.groupby(index,as_index=False)
+    trial_start = gp.first()
+
+    # align previous trial type to trial by animal and condition
+    trial_start["one_back"] = trial_start.groupby(["condition", "animal"], as_index=False)[key].shift()
+    
+    # select trials for which previous trial was blank
+    one_back_blank = trial_start[trial_start["one_back"] == "blank"].set_index(index)
+    
+    # get all samples in trials for which previous trial was blank
+    one_back_blank_trials = data[data.set_index(index).index.isin(one_back_blank.index)]
+
+    # same as above for stimulus
+    one_back_water = trial_start[trial_start["one_back"] == "water"].set_index(index)
+    
+    # get all samples in trials for which previous trial was blank
+    one_back_water_trials = data[data.set_index(index).index.isin(one_back_blank.index)]
+    return (one_back_blank_trials, one_back_water_trials)
+
+
+
 def drop_bins(data, min_trials, min_blank, min_water, index, key):
+    '''Drops bins with fewer than the given number of trials and returns data without those bins.
+
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in index and key
+    index --- list of columns to group data by
+
+    '''
     gp_index = index.copy()
     gp_index.append(key)
     group = data.groupby(gp_index)
