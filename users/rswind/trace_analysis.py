@@ -35,6 +35,8 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # TODO: add GUI that allows script to be run again after 1st run if run with GUI (not if run from command line)
 # TODO: add option to output by-animal data?
 
+# TODO: acc time in hours or days?
+
 # adapted from QueryDialog in simpledialog.py from tkinter v 8.6
 class MultiPromptDialog(Dialog):
     def __init__(self, title, prompts, initalvalues, types, parent = None):
@@ -186,111 +188,6 @@ def get_user_input():
 
     return csv_directory, analysis_directory, metadata_file, metadata_params, bin_params, min_trials_nos
 
-def pre_analysis(data, freq_window, freq_bin, time_bin, min_trials, min_water, min_blank, ui):
-    '''Computes licking frequency across trial and returns a 4-ple of dataframes: raw licking frequency, mean licking frequency, counts, and performance.
-    
-    Parameters provide flexibility in a multiple ways for both across-trial and across-training binning.
-
-    Parameters:
-    data --- data to be analyzed
-    freq_window --- size of window for rolling window analysis across a trial (in milliseconds)
-    freq_bin --- size of bin for discrete bin analysis across a trial (in milliseconds)
-    time_bin --- size of bin for multi-trial binning over entire training (in minutes)
-    min_trials --- minimum total number of trials to keep a bin
-    min_water --- minimum number of water trials to keep a bin
-    min_blank --- minimum number of blank trials to keep a bin
-    ui --- whether to print progress updates to the console
-    
-    Output: 4-ple of dataframes containing licking frequency for all trials, mean licking frequency, 
-            count of the number of trials, and performance (licking to stimulus - licking to blank) in each bin, repsectively'''
-    # do not modify loaded data
-    df = data.copy()
-
-    # calculated time to air puff
-    index = ["condition", "animal","trial no"]
-    data = analysis_functions.puff_delta(df, index)
-
-    if ui: print("... ", end='', flush=True)
-
-    # rolling window average licking frequency
-    keep = ["timestamp", "age", "sex", "strain", "acc", "delivery delta"]
-    values = ["lick", "poke"]
-    index = ["condition", "animal", "trial no", "trial type"]
-    data = analysis_functions.rolling_frequency_average(data, freq_window, values, keep, index)
-    
-    if ui: print("... ", end='', flush=True)
-
-    # resampling for trial alignment
-    # if discrete binning instead of rolling window is used, also bins samples across trial
-    keep = ["timestamp", "lick", "poke", "age", "sex", "strain", "acc"]
-    index = ["condition", "animal", "trial no", "trial type"]
-    data = analysis_functions.resample_align(data, freq_bin, "delivery delta", keep, index)
-
-    # label start of trial at each sample
-    index = ["condition", "animal", "trial no"]
-    data = analysis_functions.get_trial_start(data, index, "timestamp")
-
-    # bin by time
-    index = ["condition", "animal", "trial no", "trial type", "delivery delta"]
-    data = analysis_functions.bin_by_time(data, time_bin, "min", index, "trial time")
-
-    # calulate time bin relative to start of SAT training
-    index = ["condition", "animal", "trial no"]
-    data = analysis_functions.delta(data, index, "trial time")
-
-    if ui: print("... ", end='', flush=True)
-    
-    # group trials by previous trial identity, for trial contingency analysis
-    index = ["condition", "animal", "trial no"]
-    key = "trial type"
-    (prev_blank, prev_water) = analysis_functions.bin_prev_identity(data, index, key) 
-
-    if ui: print("...\n", end='', flush=True)
-    
-    return (data, prev_blank, prev_water)
-
-def aggregate_analysis(data,min_trials, min_blank, min_water):
-    # drop bins with fewer than the thresholded number of total, water, or blank trials
-    index = ["condition", "animal", "delta","delivery delta"]
-    key = "trial type"
-    data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
-
-    # convert time bins and trial time to float representations
-    # works better in pre-analysis but cant be moved because of drop_bins functionality
-    data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[m]").astype("float")/60.
-    data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
-
-    # number of trials for each timebin
-    index = ["condition", "animal", "delta", "delivery delta"]
-    keep = ["age", "sex", "strain", "acc", "Time (hr)", "Time (ms)"]
-    counts = analysis_functions.trial_counts(data, index, keep, "trial no")
-    
-    # mean licking frequencies for each animals for each time bin 
-    keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
-    index = ["condition", "animal", "trial type", "delta", "delivery delta"]
-    value = ["lick"]
-    data_mean = analysis_functions.mean_bin(data, index, value, keep)
-
-    # threshold trials to 200ms before to 2000ms after air puff
-    data_mean = analysis_functions.thresh(data_mean, -200, 2000)
-    
-    # calculate performance for each animal for each time bin
-    index = ["condition", "animal", "delta", "delivery delta"]
-    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
-    perf = analysis_functions.performance(data_mean, index, keep)
-    return (data_mean, counts, perf)
-
-def generate_trialcount_plot(counts_data):
-    '''Plot average number of trials and return the figure.
-    
-    Creates an individual plot for each condition. Plots average number of trials per bin vs time bins in training time.'''
-    g = sns.catplot(counts_data, x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
-    
-    for ax in g.axes.flat:
-        ax.set_ylabel("Number of Trials")
-        ax.set_ylim([0, 200])
-    return g.fig
-
 def generate_performance_plot(perf_data):
     '''Plot average performance (stimulus - blank) and return the figure.
     
@@ -314,7 +211,7 @@ def generate_lickfreq_plot(data):
      
       Creates indiviudal plots for each time bin across the training time. Plots average frequency values vs the trial time for each time bin.'''
     g = sns.relplot(data=data,kind="line",x="Time (ms)", y="lick", col="Time (hr)",col_wrap=7,
-                    hue="trial type", palette=["green", "red"], hue_order=["water", "blank"], errorbar="se",err_style="bars", legend="full")
+                    hue="stimulus", palette=["green", "red"], hue_order=["water", "blank"], errorbar="se",err_style="bars", legend="full")
 
     # add lines at air puff and water delivery
     for ax in g.axes.flat:
@@ -366,17 +263,17 @@ if __name__ == "__main__":
     if not args.noUI: 
         print("Calculating Statistics... ", end='')
 
-    data, prev_blank, prev_water = pre_analysis(df, freq_window, freq_bin, time_bin, (not args.noUI))
+    data, prev_blank, prev_water = lickfreq_analysis(df, freq_window, freq_bin, time_bin, (not args.noUI))
     mean_statistics, counts, performance = aggregate_analysis(data, min_trials, min_blank_trials, min_water_trials)
-    prev_blank_stats, prev_blank_counts, prev_blank_perf = aggregate_analysis(prev_blank, min_trials, min_blank_trials, min_water_trials)
-    prev_water_stats, prev_water_counts, prev_water_perf = aggregate_analysis(prev_water, min_trials, min_blank_trials, min_water_trials)
+    # prev_blank_stats, prev_blank_counts, prev_blank_perf = aggregate_analysis(prev_blank, min_trials, min_blank_trials, min_water_trials)
+    # prev_water_stats, prev_water_counts, prev_water_perf = aggregate_analysis(prev_water, min_trials, min_blank_trials, min_water_trials)
     
     if not args.noUI: print("Writing data to csv...\n", end='')
 
     output_dir = f'{analysis_directory}/{condition_name}/stats/{condition_name}'
     output_prev = f'{analysis_directory}/{condition_name}/prev_stats/{condition_name}'
 
-    cols = ["condition", "sex", "age", "strain", "animal", "trial type", "Time (hr)", "Time (ms)", "lick"]
+    cols = ["condition", "sex", "age", "strain", "animal", "stimulus", "Time (hr)", "Time (ms)", "lick"]
     mean_statistics.to_csv(f'{output_dir}_lick_frequency.csv', columns=cols, index=False)
     prev_blank_stats.to_csv(f'{output_prev}_prevblank_lick_frequency.csv', columns=cols, index=False)
     prev_water_stats.to_csv(f'{output_prev}_prevwater_lick_frequency.csv', columns=cols, index=False)

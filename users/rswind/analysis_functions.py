@@ -5,12 +5,35 @@
 import pandas as pd
 
 # TODO: make functions fully generic or specific to this analysis (ie requiring specific column names)
-# which is easier to debug long-term?
+# which is easier to debug long-term? -> generic is much easier to change column names or conditions as necessary
 
-def rolling_frequency_average(data, freq_window, values, keep, index):
+# TODO: make generic
+def puff_delta(data, index, name, key_time, key_delay):
+    '''Caluculates time from sample in a trial to air delivery in that trial and returns data with new column 'delivery delta'.
+    
+    Assumes SAT trial structure - random delay between 200ms to 
+
+    Parameters:
+    data --- data frame containing trial data. Must contain all of the columns in index and 'timestamp' column
+    index --- list of columns to group data by
+    key_time --- name of column containg sample time
+    key_delay --- name of column containing delay time for that trial
+    name --- name of column to write delta to
+    '''
+
+    data = data.set_index(index)
+    grouped = data.groupby(index)
+    air_start = grouped[key_time].first() + grouped[key_delay].first()
+    data[name] = data[key_time] - air_start # data["air start"]
+    
+    return data.reset_index()
+
+
+
+def rolling_frequency_average(data, freq_window, values, keep, index, key):
     '''Calculate licking frequency across index groups as a time-based rolling average and return as a dataframe.
 
-    Mutually exclusive with resample_align.
+    Mutually exclusive with resample_align. Window is in ms and is open on the left and closed on the right.
 
     Parameters:
     data --- data frame containing trial data. Must contain all of the columns in values, keep, and index
@@ -18,10 +41,13 @@ def rolling_frequency_average(data, freq_window, values, keep, index):
     values --- list of columns to calculate rolling average
     keep --- list of columns to keep but not calculate rolling average
     index --- list of columns to index/group by
+    key --- column to calculate rolling window with
     '''
-    group = data.set_index("timestamp").groupby(index)
+    # can only do rolling window calculations over index
+    group = data.set_index(key).groupby(index)
+    # licking frequency in Hz = number of licks/time window 
     licks = group.rolling(window=pd.to_timedelta(freq_window, unit="ms"), closed="right")[values].sum()/(freq_window/1000)
-    keep = data.set_index(index)[keep].set_index("timestamp",append=True)
+    keep = data.set_index(index)[keep].set_index(key,append=True)
     data_roll = pd.concat([licks, keep], axis=1).reset_index()
 
     return data_roll
@@ -45,7 +71,7 @@ def resample_align(data, frq, key, keep, index):
     a 100ms frequency aligns data without changing values'''
 
     gp = pd.Grouper(key=key, freq=pd.offsets.Milli(frq))
-    #append resampler to index group
+    # append resampler to index group
     index.append(gp)
     group = data.groupby(index)
     keep = group[keep].first()
@@ -53,7 +79,7 @@ def resample_align(data, frq, key, keep, index):
 
     return data_sample
 
-def get_trial_start(data, index, key):
+def get_first_sample(data, index, key, name):
     '''Creates a columns with first row of a given column row across all samples when grouped by a given index of columns.
 
         Used to copy timestamp at trial initation across all samples in a trial.
@@ -61,10 +87,11 @@ def get_trial_start(data, index, key):
        Parameters:
        data --- data frame containing trial data. Must contain all of the columns in index and key
        index --- list of columns to group data by
-       key --- column to take start time value from'''
+       key --- column to take start time value from
+       name --- name of column to write first sample to'''
 
     data = data.set_index(index)
-    data["trial time"] = data.groupby(index)[key].first()
+    data[name] = data.groupby(index)[key].first()
     data = data.reset_index()
     return data
 
@@ -92,38 +119,23 @@ def bin_by_time(data, bin_size, bin_unit, index, key):
     return data
 
 # TODO: make fully generic
-def delta(data, index, key):
-    '''Calculates time from start of SAT to trial and returns data with new column 'delta'.
+def delta(data, keep, index, key, name):
+    '''Calculates time from start of SAT to trial and returns data in given column.
     
     bin_by_time should be run first to get trial start times
 
     Parameters:
     data --- data frame containing trial data. Must contain all of the columns in index and key
-    index --- list of columns to group data by
-    key --- column with bin times to use for calculation'''
+    keep --- list of columns to keep
+    gp --- column or list of columns to group by
+    key --- column with bin times to use for calculation
+    name --- name of column to write delta to'''
 
     data = data.set_index(index)
     delta = data[key] - data.sort_values(key).groupby("animal")[key].first() - data.groupby("animal")["acc"].first()
-    data["delta"] = delta
+    data[name] = delta
     return data.reset_index()
 
-# TODO: make generic
-def puff_delta(data, index):
-    '''Caluculates time from sample in a trial to air delivery in that trial and returns data with new column 'delivery delta'.
-    
-    Data must have 'timestamp' column indicating sample recording time to calculate puff delta.
-
-    Parameters:
-    data --- data frame containing trial data. Must contain all of the columns in index and 'timestamp' column
-    index --- list of columns to group data by
-    '''
-
-    data = data.set_index(index)
-    grouped = data.groupby(index)
-    data["air start"] = grouped["timestamp"].first() + grouped["delay"].first()
-    data["delivery delta"]  = data["timestamp"] - data["air start"]
-    data = data.drop(columns="air start")
-    return data.reset_index()
 
 # TODO: make generic
 def bin_prev_identity(data, key, index):
@@ -203,7 +215,7 @@ def thresh(data, start, end):
     return data
 
 def performance(data, index, keep):
-    group = data.set_index(index).groupby("trial type")
+    group = data.set_index(index).groupby("stimulus")
     water = group.get_group("water")["lick"]
     blank = group.get_group("blank")["lick"]
     data_perf = water - blank
@@ -219,3 +231,118 @@ def trial_counts(data, index, keep, key):
 
     data = pd.concat([counts, keep], axis=1).reset_index()
     return data
+
+
+def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
+    '''Computes licking frequency across trial and returns raw licking frequency.
+    
+    Parameters provide flexibility in a multiple ways for both across-trial and across-training binning.
+
+    Parameters:
+    data --- data to be analyzed
+    freq_window --- size of window for rolling window analysis across a trial (in milliseconds)
+    freq_bin --- size of bin for discrete bin analysis across a trial (in milliseconds)
+    time_bin --- size of bin for multi-trial binning over entire training (in minutes)
+    '''
+    # parameters
+    key_time = "timestamp"
+    key_delay = "delay"
+    puff_name = "puff delta"
+
+    index_trial = ["condition", "animal","trial no"]
+    index_trial_type = ["condition", "animal", "trial no", "stimulus"]
+
+    keep = ["timestamp", "age", "sex", "strain", "acc"]
+
+
+    # do not modify loaded data
+    df = data.copy()
+
+    # calculated time to air puff
+    # index = ["condition", "animal","trial no"]
+    data = puff_delta(df, index_trial, puff_name, key_time, key_delay)
+
+    # rolling window average licking frequency
+    # keep = ["timestamp", "age", "sex", "strain", "acc", "delivery delta"]
+    # index = ["condition", "animal", "trial no", "stimulus"]
+    keep.append(puff_name)
+    values = ["lick", "poke"]
+    # TODO: need stimulus ? 
+    
+    data = rolling_frequency_average(data, freq_window, values, keep, index_trial_type)
+    keep.pop()
+
+    # resampling for trial alignment
+    # if discrete binning instead of rolling window is used, also bins samples across trial
+    # keep = ["timestamp", "lick", "poke", "age", "sex", "strain", "acc"]
+    keep_align = keep + values
+    # TODO: need stimulus ?
+    index = ["condition", "animal", "trial no", "stimulus"]
+    data = resample_align(data, freq_bin, puff_name, keep_align, index)
+
+    # label start of trial at each sample
+    # index = ["condition", "animal", "trial no"]
+    data = get_first_sample(data, index_trial, key_time)
+
+    # bin by time
+    index = ["condition", "animal", "trial no", "stimulus", "delivery delta"]
+    data = bin_by_time(data, time_bin, "min", index, "trial time")
+
+    # calulate time bin relative to start of SAT training
+    # index = ["condition", "animal", "trial no"]
+    name = "delta"
+    key = "trial time"
+    data = delta(data, index, "trial time")
+    
+    return data
+
+def aggregate_analysis(data, min_trials, min_blank, min_water):
+    '''Computes aggregate values for time bins (mean lick frequency, counts, performance) and return them as separate data frames.
+    
+    Drops time bins with fewer than the given number of trials prior to aggregation.
+
+    Parameters:
+    data--- data frame to calculate aggregate values from
+    min_trials --- minimum total number of trials to keep a bin
+    min_water --- minimum number of water trials to keep a bin
+    min_blank --- minimum number of blank trials to keep a bin'''
+    # drop bins with fewer than the thresholded number of total, water, or blank trials
+    index = ["condition", "animal", "delta","delivery delta"]
+    key = "stimulus"
+    data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
+
+    # convert time bins and trial time to float representations
+    # works better in pre-analysis but cant be moved because of drop_bins functionality
+    data["Time (hr)"] = data["delta"].to_numpy(dtype="timedelta64[m]").astype("float")/60.
+    data["Time (ms)"] = data["delivery delta"].to_numpy(dtype="timedelta64[ms]").astype("float")
+
+    # number of trials for each timebin
+    index = ["condition", "animal", "delta", "delivery delta"]
+    keep = ["age", "sex", "strain", "acc", "Time (hr)", "Time (ms)"]
+    counts = analysis_functions.trial_counts(data, index, keep, "trial no")
+    
+    # mean licking frequencies for each animals for each time bin 
+    keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
+    index = ["condition", "animal", "stimulus", "delta", "delivery delta"]
+    value = ["lick"]
+    data_mean = analysis_functions.mean_bin(data, index, value, keep)
+
+    # threshold trials to 200ms before to 2000ms after air puff
+    data_mean = analysis_functions.thresh(data_mean, -200, 2000)
+    
+    # calculate performance for each animal for each time bin
+    index = ["condition", "animal", "delta", "delivery delta"]
+    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
+    perf = analysis_functions.performance(data_mean, index, keep)
+    return (data_mean, counts, perf)
+
+def generate_trialcount_plot(counts_data):
+    '''Plot average number of trials and return the figure.
+    
+    Creates an individual plot for each condition. Plots average number of trials per bin vs time bins in training time.'''
+    g = sns.catplot(counts_data, x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
+    
+    for ax in g.axes.flat:
+        ax.set_ylabel("Number of Trials")
+        ax.set_ylim([0, 200])
+    return g.fig

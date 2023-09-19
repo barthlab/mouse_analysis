@@ -29,11 +29,16 @@ def load_file(filename):
     filename --- path of file to load (string) '''
 
     animal = pd.read_csv(filename, header=None)
-    animal = animal.rename(columns={0:"timestamp",1:"poke", 2:"lick", 3:"water", 4:"delay"})
+
+    mp = {0:"timestamp",1:"poke", 2:"lick", 3:"condition code", 4:"delay"}
+    if len(animal.columns) == 6:
+        mp = {0:"timestamp",1:"poke", 2:"lick", 3:"condition code", 4:"delay", 5:"stimulus"}
+    
+    animal = animal.rename(columns=mp)
     datetime = time_from_file(filename)
     animal["timestamp"] = pd.to_datetime(animal["timestamp"], unit="s", origin=pd.Timestamp(datetime))
     animal["delay"] = pd.to_timedelta(animal["delay"], unit="ms")
-    return animal.iloc[:, 0:5]
+    return animal
 
 def get_trials(trial):
     '''Generates a pandas Series of a given length populated by a given value.
@@ -54,7 +59,7 @@ def enumerate_trials(animal):
     The number of trials, and the number of each trial type, matches v16 of the matlab analysis.
     '''
     # first sample, all samples where current water code is not 7 (timeout) and previous is 7,  last sample
-    trial_boundary = pd.concat([animal.iloc[[0]], animal[(animal["water"]!=7) & (animal["water"].shift() == 7)], animal.iloc[[animal.shape[0]-1]]])
+    trial_boundary = pd.concat([animal.iloc[[0]], animal[(animal["condition code"]!=7) & (animal["condition code"].shift() == 7)], animal.iloc[[animal.shape[0]-1]]])
     # indexes of first sample in each trial
     trial_boundary_indicies = pd.Series(trial_boundary.index)
 
@@ -74,22 +79,36 @@ def enumerate_trials(animal):
 
     return animal
 
+def label_trials_stimulus(animal):
+    '''Label samples as stimulus or blank.'''
+    animal["stimulus"] = animal["stimulus"].replace({0:"blank", 1:"stimulus"})
+    return animal
+
 # TODO: change labeling to handle pseudo data (label as stimulus vs blank and as water vs no water -  check how mouse_analysis is doing it)
 # might need to do it differently since it uses lists vs series/dataframes
-def label_trials(animal):
+def label_trials_water(animal):
     '''Decides what type a trial is (water or no water) and return animal with all trials labeled.
     
     Trial types are decided by the code in the 3rd column (if the trial contains a 3, it is a water trial). 
     Requires trials to already be grouped individually and labeled with trial number.
     '''
     # get all trials labeled with a 3 (water trials)
-    go = animal.groupby(["trial no"]).filter(lambda x: (x["water"]==3).any())
+    go = animal.groupby(["trial no"]).filter(lambda x: (x["condition code"]==3).any())
     # label all these trials as water
-    go["trial type"] = ["water" for i in range(go.shape[0])]
-    animal["trial type"] = go["trial type"]
+    go["water"] = ["condition code" for i in range(go.shape[0])]
+    animal["water"] = go["water"]
     # label remaning trials as blank
-    animal["trial type"] = animal["trial type"].fillna(value="blank")
+    animal["water"] = animal["water"].fillna(value="no water")
     return animal
+
+def label_trials(animal):
+    animal = label_trials_water(animal)
+    if "stimulus" in animal.columns:
+        animal = label_trials_stimulus(animal)
+    else:
+        animal["stimulus"] = animal["water"]
+    return animal
+
 
 # TODO: handle acclimation as an hourly input
 def format_data(data):
@@ -145,40 +164,47 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
         animal = label_trials(animal)
 
         # load metadata if the animal has it
-        try:
-            metadata[metadata["Animal ID"] == animal_name].empty
-        except KeyError:
-            print("Animal ID column must be named 'Animal ID'")
-            sys.exit(1)
+        if not metadata.empty:
+            try:
+                metadata[metadata["Animal ID"] == animal_name].empty
+            except KeyError:
+                print("Animal ID column must be named 'Animal ID'")
+                sys.exit(1)
 
-        if not (metadata[metadata["Animal ID"] == animal_name].empty):
-            an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
-            try:
-                animal["acc"] = an_meta.loc[0, acc_col_name]
-            except KeyError:
-                print(f"Number of acclimation days not named {acc_col_name}")
-            try:
-                animal["age"] = an_meta.loc[0, "Age"]
-            except:
-                animal["age"] = pd.NA
-                print(f"{animal_name} Age not in metadata file")
-            try:
-                animal["sex"] = an_meta.loc[0, "Sex"]
-            except KeyError:
-                animal["sex"] = ''
-                print(f"{animal_name} Sex not in metadata file")
-            try:
-                animal["strain"] = an_meta.loc[0, "Strain"]   
-            except KeyError:
-                animal["strain"] = ''
-                print(f"{animal_name} Strain not in metadata file")
+            if not (metadata[metadata["Animal ID"] == animal_name].empty):
+                an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
+                try:
+                    animal["acc"] = an_meta.loc[0, acc_col_name]
+                except KeyError:
+                    print(f"Number of acclimation days not named {acc_col_name}")
+                try:
+                    animal["age"] = an_meta.loc[0, "Age"]
+                except:
+                    animal["age"] = pd.NA
+                    print(f"{animal_name} Age not in metadata file")
+                try:
+                    animal["sex"] = an_meta.loc[0, "Sex"]
+                except KeyError:
+                    animal["sex"] = ''
+                    print(f"{animal_name} Sex not in metadata file")
+                try:
+                    animal["strain"] = an_meta.loc[0, "Strain"]   
+                except KeyError:
+                    animal["strain"] = ''
+                    print(f"{animal_name} Strain not in metadata file")
+            else:
+                print(f"{animal_name}: no metadata")
+                animal["acc"] = default_acc
         else:
-            print(f"{animal_name}: no metadata")
             animal["acc"] = default_acc
-    
+            animal["age"] = pd.NA
+            animal["sex"] = ''
+            animal["strain"] = ''
+            print("No metadata")
             
         animal["animal"] = animal_name
-        animal = format_data(animal) 
+        animal = format_data(animal)
+        animal["acc"] = pd.to_timedelta(animal["acc"], unit="days")
         return animal
 
 def make_condition_df(condir, condition, metadata, acc_col_name, default_acc):
