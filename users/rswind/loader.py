@@ -19,6 +19,7 @@ def time_from_file(filename):
     return pd.Timestamp(datetime)
 
 # TODO: change  file loading to handle pseudo data (include 6th column to id stimulus vs blank trials)
+# all reward has 6-column acc and 5-column (regular SAT) SAT ugh
 def load_file(filename):
     '''Loads, formats, and returns lick frequecny data as a data frame.
     
@@ -28,19 +29,19 @@ def load_file(filename):
     Parameters:
     filename --- path of file to load (string) '''
 
-    animal = pd.read_csv(filename, header=None)
+    data = pd.read_csv(filename, header=None)
 
     mp = {0:"timestamp",1:"poke", 2:"lick", 3:"condition code", 4:"delay"}
-    if len(animal.columns) == 6:
+    if len(data.columns) == 6:
         mp = {0:"timestamp",1:"poke", 2:"lick", 3:"condition code", 4:"delay", 5:"stimulus"}
     
-    animal = animal.rename(columns=mp)
+    data = data.rename(columns=mp)
     datetime = time_from_file(filename)
-    animal["timestamp"] = pd.to_datetime(animal["timestamp"], unit="s", origin=pd.Timestamp(datetime))
-    animal["delay"] = pd.to_timedelta(animal["delay"], unit="ms")
-    return animal
+    data["timestamp"] = pd.to_datetime(data["timestamp"], unit="s", origin=pd.Timestamp(datetime))
+    data["delay"] = pd.to_timedelta(data["delay"], unit="ms")
+    return data
 
-def get_trials(trial):
+def get_trials(trial, start = 0):
     '''Generates a pandas Series of a given length populated by a given value.
     
     Used to label all samples in a trial with the trial number.
@@ -52,14 +53,14 @@ def get_trials(trial):
     (trial_no, len) = trial
     return pd.Series([trial_no for i in range(len)], dtype="int")
 
-def enumerate_trials(animal):
+def enumerate_trials(data, start=0):
     '''Numbers each sample in a trial with the trial number and returns the input dataframe with labeled trials.
 
-    Given the set of data for an animal, labels each sample in a trial with the trial type and the trial number, numbering trials consecutively from 1.
+    Given the set of data, labels each sample in a trial with the trial type and the trial number, numbering trials consecutively from 1.
     The number of trials, and the number of each trial type, matches v16 of the matlab analysis.
     '''
     # first sample, all samples where current water code is not 7 (timeout) and previous is 7,  last sample
-    trial_boundary = pd.concat([animal.iloc[[0]], animal[(animal["condition code"]!=7) & (animal["condition code"].shift() == 7)], animal.iloc[[animal.shape[0]-1]]])
+    trial_boundary = pd.concat([data.iloc[[0]], data[(data["condition code"]!=7) & (data["condition code"].shift() == 7)], data.iloc[[data.shape[0]-1]]])
     # indexes of first sample in each trial
     trial_boundary_indicies = pd.Series(trial_boundary.index)
 
@@ -71,43 +72,46 @@ def enumerate_trials(animal):
     # label all samples in a trial with its trial number
     trial_count = trial_count.map(get_trials).explode()[1:]
     trial_count.index = range(0, trial_count.shape[0])
-    # add trial labels to animal data
-    animal.insert(1, "trial no", trial_count)
-
+    trial_count = trial_count + start
+    
+    # add trial labels to data
+    #data.insert(1, "trial no", trial_count)
+    data["trial no"] = trial_count
     # set trial no for last sample
-    animal.loc[animal.shape[0] - 1, "trial no",] = trial_boundary.shape[0] - 1
+    data.loc[data.shape[0] - 1, "trial no",] = trial_boundary.shape[0] - 1 + start
 
-    return animal
+    return data
 
-def label_trials_stimulus(animal):
+def label_trials_stimulus(data):
     '''Label samples as stimulus or blank.'''
-    animal["stimulus"] = animal["stimulus"].replace({0:"blank", 1:"stimulus"})
-    return animal
+    data["stimulus"] = data["stimulus"].replace({0:"blank", 1:"stimulus"})
+    return data
 
 # TODO: change labeling to handle pseudo data (label as stimulus vs blank and as water vs no water -  check how mouse_analysis is doing it)
 # might need to do it differently since it uses lists vs series/dataframes
-def label_trials_water(animal):
-    '''Decides what type a trial is (water or no water) and return animal with all trials labeled.
+def label_trials_water(data):
+    '''Decides what type a trial is (water or no water) and return data with all trials labeled.
     
     Trial types are decided by the code in the 3rd column (if the trial contains a 3, it is a water trial). 
     Requires trials to already be grouped individually and labeled with trial number.
     '''
     # get all trials labeled with a 3 (water trials)
-    go = animal.groupby(["trial no"]).filter(lambda x: (x["condition code"]==3).any())
+    go = data.groupby(["trial no"]).filter(lambda x: (x["condition code"]==3).any())
     # label all these trials as water
-    go["water"] = ["condition code" for i in range(go.shape[0])]
-    animal["water"] = go["water"]
+    go["water"] = ["water" for i in range(go.shape[0])]
+    data["water"] = go["water"]
     # label remaning trials as blank
-    animal["water"] = animal["water"].fillna(value="no water")
-    return animal
+    data["water"] = data["water"].fillna(value="no water")
+    return data
 
-def label_trials(animal):
-    animal = label_trials_water(animal)
-    if "stimulus" in animal.columns:
-        animal = label_trials_stimulus(animal)
+def label_trials(data):
+    data = label_trials_water(data)
+    if "stimulus" in data.columns:
+        data = label_trials_stimulus(data)
     else:
-        animal["stimulus"] = animal["water"]
-    return animal
+        data["stimulus"] = data["water"]
+        data["stimulus"] = data["stimulus"].replace({"water":"stimulus", "no water":"blank"})
+    return data
 
 
 # TODO: handle acclimation as an hourly input
@@ -121,6 +125,7 @@ def format_data(data):
     
     data.loc[data["lick"] == 2,"lick"] = 1
     data.loc[:, "acc"] = pd.to_timedelta(data["acc"], unit="day")
+    # drops last sample for each trial (not actual data)
     data = data[data.groupby(["animal", "trial no"]).cumcount(ascending=False) > 0]
 
     return data
@@ -147,21 +152,26 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
     fs.sort()
     animal = []        
     # this will load all files in a given directory - should only have the relevant training files
+    start = 0
     for f in fs:
         f_path = andir + "\\" + f
         if (os.path.isfile(f_path)): 
             try:     
-                animal.append(load_file(f_path))
+                data = load_file(f_path)
             except UnicodeDecodeError:
                 print(f"Check that only behavior files are in {andir}")
                 sys.exit(1)
+            # labeling trials
+            data = enumerate_trials(data, start)
+            start = data.tail(1)["trial no"].reset_index(drop=True)[0]
+            data = label_trials(data)
+            animal.append(data)
     if animal == []:
         print(f"{animal_name} has no behavior files")
         return pd.DataFrame()
     else:
         animal = pd.concat(animal, ignore_index=True)
-        animal = enumerate_trials(animal)
-        animal = label_trials(animal)
+        
 
         # load metadata if the animal has it
         if not metadata.empty:
@@ -204,7 +214,6 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
             
         animal["animal"] = animal_name
         animal = format_data(animal)
-        animal["acc"] = pd.to_timedelta(animal["acc"], unit="days")
         return animal
 
 def make_condition_df(condir, condition, metadata, acc_col_name, default_acc):
