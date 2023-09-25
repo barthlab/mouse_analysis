@@ -4,14 +4,11 @@
 
 import pandas as pd
 
-# TODO: make functions fully generic or specific to this analysis (ie requiring specific column names)
-# which is easier to debug long-term? -> generic is much easier to change column names or conditions as necessary
-
 ################################
 #    SHORT HELPER FUNCTIONS    #
 ################################
 
-# refactor finished
+# helper functions for lick frequency
 
 def puff_delta(data, index, key_time, key_delay, name):
     '''Caluculates time from sample in a trial to air delivery in that trial and
@@ -45,12 +42,13 @@ def puff_delta(data, index, key_time, key_delay, name):
     return data.reset_index()
 
 def get_first_sample(data, index, key, name):
-    '''Creates a columns with first row of a given column row across all samples when grouped by a given index of columns.
+    '''Creates a columns with first row of a given column row across all samples
+    when grouped by a given index of columns.
 
        Used to copy timestamp at trial initation across all samples in a trial.
 
        Parameters:
-       data --- data frame containing trial data. Must contain all of the columns in index and key
+       data --- data frame containing trial data
        index --- list of columns to group data by
        key --- column to take start time value from
        name --- name of column to write first sample to'''
@@ -70,7 +68,7 @@ def rolling_time(data, freq_window, index, values_mean, values_first, key):
     Parameters:
     data --- data frame containing trial data. Must contain all of the columns 
              in values, keep, and index
-    freq_window --- length of window to calculate rolling window with in ms (int)
+    freq_window --- length of window to calculate rolling window with in ms
     values --- list of columns to calculate rolling average
     keep --- list of columns to keep but not calculate rolling average
     index --- list of columns to index/group by
@@ -96,7 +94,7 @@ def bin_by_time(data, bin_size, bin_unit, index, values_mean, values_first, key)
     any rows.
     
     Parameters:
-    data --- data frame containing trial data. Must contain all of the columns in index and key
+    data --- data frame containing trial data
     bin_size --- size of bin to group by, in bin_unit (int)
     bin_unit --- unit of bin to group by (e.g. ms, min, hr)
     index --- list of columns to group data by
@@ -119,7 +117,8 @@ def bin_by_time(data, bin_size, bin_unit, index, values_mean, values_first, key)
     return data_sample
 
 def delta(data, index, gp, key, key_acc, name):
-    '''Calculates time from start of SAT to trial and returns data in given column.
+    '''Calculates time from start of SAT to trial and returns data in given 
+    column.
 
     For the given group, subtracts the values of key_time and key_acc
     in the first row of the group from all values of key_time in the group.
@@ -127,7 +126,7 @@ def delta(data, index, gp, key, key_acc, name):
     row is in as the key.
 
     Parameters:
-    data --- data frame containing trial data. Must contain all of the columns in index and key
+    data --- data frame containing trial data
     index --- list of columns to index data
     gp --- column or list of columns to
     key --- column with bin times to use for calculation
@@ -142,9 +141,121 @@ def delta(data, index, gp, key, key_acc, name):
     data[name] = delta
     return data.reset_index()
 
-# TODO: refactor and make generic
+# helper functions for timebin aggregation
 
-def bin_prev_identity(data, index, gp, key, cond_pos, cond_neg, name):
+def drop_group(data, min_trials, min0, min1, index, col, cond0, cond1, key):
+    '''Drops bins with fewer than the given number of trials and returns data 
+       without those bins.
+
+    Filters bins based on total number of samples in index-based groups, 
+    as well as number of samples from given key in a group. This key must be 
+    binary (e.g. stimulus or blank; water or no water) for the key specific 
+    functionality to work. That is, cond0 and cond1 must be from the same
+    column, mutually exclusive, and have no other possible values.
+
+    Parameters:
+    data --- data frame containing trial data
+    min_trials --- minimum total number of trials to keep a bin (exclusive)
+    min0 --- minimum number of trials per time bin for the first trial type
+             (exclusive)
+    min1 --- minimum number of trials per time bin for the second trial type
+             (exclusive)
+    index --- set of columns to group data by
+    col --- column to take trial number counts from 
+            (has no effect on analysis, should not be in index)
+    cond0 --- name of first trial type
+    cond1 --- name of second trial type
+    key --- name of column containing trial type labels
+    '''
+    gp_index = index.copy()
+    gp_index.append(key)
+    group = data.groupby(gp_index)
+    data = data.set_index(gp_index)
+
+    #filter bins with fewer than min_blank blank or min_water water trials
+    counts = group.count().unstack(level=key)
+    cond = (counts.loc[:, (col, cond0)] > min0) & (counts.loc[:, (col, cond1)] > min1) 
+    data = data[cond]
+
+    #filter bins with fewer than min_trials total trials
+    total_group = data.groupby(index) 
+    total_counts = total_group.count()
+    data = data[total_counts[col] > min_trials]
+    data = data.reset_index()
+
+    return data
+
+def mean_bin(data, index, value, keep):
+    '''Take mean of data in value and take first row of data in keep, 
+       grouped by index, and return aggredate values.'''
+
+    data = data.groupby(index)
+    lick = data[value].mean()
+    keep = data[keep].first()
+
+    data = pd.concat([lick, keep], axis=1).reset_index()
+    return data
+
+def thresh(data, start, end, key):
+    '''Drop rows with values of the key column outside of start and end. 
+    Requires key to be of type timedelta. Inclusive to start and exclusive of 
+    end.'''
+
+    s = pd.to_timedelta(abs(start),unit="ms")
+    if start < 0:
+        s = -s
+
+    e = pd.to_timedelta(abs(end), unit="ms")
+    if end < 0:
+        e = -e
+    
+    data = data[(data[key] >= s) & (data[key] < e)]
+    return data
+
+def performance(data, index, keep, key_trial, key_value, cond0, cond1):
+    '''Calculate performance (difference in aggregate value between trial types)
+    and return as new data frame.
+
+    Groups data by index and given trial type column, then subtracts cond0 from
+    cond1 for each group to get performance. Takes the first row from cond1 
+    group for kept columns (metadata).
+    
+    Parameters:
+    data --- data frame containing trial data
+    index --- list of columns to group data by
+    keep --- list of columns to keep
+    key_trial --- column containing trial type labels
+    key_value --- column containing data to subtract
+    cond0 --- name of first trial type
+    cond1 --- name of second trial type'''
+
+    group = data.set_index(index).groupby(key_trial)
+    blank = group.get_group(cond0)[key_value]
+    stim = group.get_group(cond1)[key_value]
+    data_perf = stim - blank
+    keep = group.get_group(cond1)[keep]
+    data_perf = pd.concat([data_perf, keep], axis=1)
+    return data_perf.reset_index()
+
+def trial_counts(data, index, keep, key):
+    '''Returns total number of rows in key for data grouped by index. 
+    
+    Keeps first sample from given list of columns in keep. The key column used 
+    to select counts does not affect the result as long as it is not in index.'''
+
+    gp = data.groupby(index)
+    counts = gp[key].count()
+    keep = gp.first()[keep]
+
+    data = pd.concat([counts, keep], axis=1).reset_index()
+    return data
+
+#################################
+#    MAIN ANALYSIS FUNCTIONS    #
+#################################
+
+# TODO: refactor and make generic
+def bin_prev_identity(data, index, gp, key, cond0, cond1, name):
     '''Returns tuple of all trials where the previous trial was blank and trials where the previous trial was stimulus.
        
        Parameters:
@@ -171,88 +282,21 @@ def bin_prev_identity(data, index, gp, key, cond_pos, cond_neg, name):
     one_back_water_trials = data[data.set_index(index).index.isin(one_back_blank.index)]
     return (one_back_blank_trials, one_back_water_trials)
 
-# TODO: allow conversion to float before this function is run (keep column/make generic)
-def drop_bins(data, min_trials, min_blank, min_water, index, key):
-    '''Drops bins with fewer than the given number of trials and returns data without those bins.
-
-    Parameters:
-    data --- data frame containing trial data. Must contain all of the columns in index and key
-    index --- list of columns to group data by
-
-    '''
-    gp_index = index.copy()
-    gp_index.append(key)
-    group = data.groupby(gp_index)
-    data = data.set_index(gp_index)
-
-    #filter bins with fewer than min_blank blank or min_water water trials
-    counts = group.count().unstack(level=key)
-    cond = (counts.loc[:, ("trial no", "blank")] > min_blank) & (counts.loc[:, ("trial no", "water")] > min_water) 
-    data = data[cond]
-
-    #filter bins with fewer than min_trials total trials
-    total_group = data.groupby(index) 
-    total_counts = total_group.count()
-    data = data[total_counts["trial no"] > min_trials]
-    data = data.reset_index()
-
-    return data
-
-def mean_bin(data, index, value, keep):
-    data = data.groupby(index)
-    lick = data[value].mean()
-    keep = data[keep].first()
-
-    data = pd.concat([lick, keep], axis=1).reset_index()
-    return data
-
-def thresh(data, start, end):
-    '''threshold licking samples to samples between start and end.'''
-    s = pd.to_timedelta(abs(start),unit="ms")
-    if start < 0:
-        s = -s
-
-    e = pd.to_timedelta(abs(end), unit="ms")
-    if end < 0:
-        e = -e
-    
-    data = data[(data["delivery delta"] >= s) & (data["delivery delta"] < e)]
-    return data
-
-def performance(data, index, keep):
-    group = data.set_index(index).groupby("stimulus")
-    water = group.get_group("water")["lick"]
-    blank = group.get_group("blank")["lick"]
-    data_perf = water - blank
-    data_perf = data_perf
-    keep = group.get_group("water")[keep]
-    data_perf = pd.concat([data_perf, keep], axis=1)
-    return data_perf.reset_index()
-
-def trial_counts(data, index, keep, key):
-    gp = data.groupby(index)
-    counts = gp[key].count()
-    keep = gp.first()[keep]
-
-    data = pd.concat([counts, keep], axis=1).reset_index()
-    return data
-
-
-
-#################################
-#    MAIN ANALYSIS FUNCTIONS    #
-#################################
-
 def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
-    '''Computes licking frequency across trial and returns raw licking frequency.
+    '''Computes licking frequency at a given sample rate across trial and
+    returns raw licking frequency.
     
-    Parameters provide flexibility in a multiple ways for both across-trial and across-training binning.
+    Parameters provide flexibility in multiple ways for both cross-trial and 
+    cross-training binning.
 
     Parameters:
     data --- data to be analyzed
-    freq_window --- size of window for rolling window analysis across a trial (in milliseconds)
-    freq_bin --- size of bin for discrete bin analysis across a trial (in milliseconds)
-    time_bin --- size of bin for multi-trial binning over entire training (in minutes)
+    freq_window --- size of window for rolling window analysis across a trial 
+                    (milliseconds)
+    freq_bin --- size of bin for discrete bin analysis across a trial 
+                 (milliseconds)
+    time_bin --- size of bin for multi-trial binning over entire training 
+                 (minutes)
     '''
     # parameters
     key_time = "timestamp"
@@ -263,7 +307,6 @@ def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
     key_acc = "acc"
 
     index_trial = ["condition", "animal","trial no"]
-    index_trial_type = ["condition", "animal", "trial no", "stimulus"]
 
     keep = ["timestamp", "age", "sex", "strain", "acc", "stimulus", "water"]
     values = ["lick", "poke"]
@@ -306,50 +349,63 @@ def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
 
     return data
 
-def aggregate_analysis(data, min_trials, min_blank, min_water):
-    '''Computes aggregate values for time bins (mean lick frequency, counts, performance) and return them as separate data frames.
+def aggregate_analysis(data, min_trials, min_blank, min_stimulus):
+    '''Computes aggregate values for time bins (mean lick frequency, counts, 
+    performance) and return them as separate data frames.
     
-    Drops time bins with fewer than the given number of trials prior to aggregation.
+    Drops time bins with fewer than the given number of trials. Thresholds
+    samples from 200 ms before air delivery (shortest amount of time random 
+    delay can be) to 2000 ms after water delivery (shortest amount of time
+    until samples for a trial stop).
 
     Parameters:
     data--- data frame to calculate aggregate values from
     min_trials --- minimum total number of trials to keep a bin
-    min_water --- minimum number of water trials to keep a bin
+    min_stimulus --- minimum number of stimulus trials to keep a bin
     min_blank --- minimum number of blank trials to keep a bin'''
-    # drop bins with fewer than the thresholded number of total, water, or blank trials
-    index = ["condition", "animal", "delta","delivery delta"]
-    key = "stimulus"
-    data = analysis_functions.drop_bins(data, min_trials, min_blank, min_water, index, key)
-
     
+    # parameters
+    key_time = "timestamp"
+    key_delay = "delay"
+    key_puff = "puff delta"
+    key_start = "trial start"
+    key_delta = "delta"
+    key_acc = "acc"
 
-    # number of trials for each timebin
-    index = ["condition", "animal", "delta", "delivery delta"]
+    index_animal = ["condition", "animal"]
+    index_timebin = index_animal + [key_delta, key_puff]
+
     keep = ["age", "sex", "strain", "acc", "Time (hr)", "Time (ms)"]
-    counts = analysis_functions.trial_counts(data, index, keep, "trial no")
+    values = ["lick", "poke"]
+
+    # drop bins with fewer than the given number of total, water, or blank trials
+    # group by delta for timebins
+    # group by key_puff for counting (# samples at any puff delta is number of
+    # trials in a bin), if trials are aligned on key_puff
+    key = "stimulus"
+    cond0 = "blank"
+    cond1 = "stimulus"
+    data = drop_group(data, min_trials, min_blank, min_stimulus, index_timebin, 
+                      "trial no", cond0, cond1, key)
     
-    # mean licking frequencies for each animals for each time bin 
-    keep = ["age", "sex", "strain", "acc","Time (hr)", "Time (ms)"]
-    index = ["condition", "animal", "stimulus", "delta", "delivery delta"]
-    value = ["lick"]
-    data_mean = analysis_functions.mean_bin(data, index, value, keep)
+    # number of trials for each timebin
+    # TODO: delete? (if we have counts_groups we dont need counts) <- check that the groups sum to the total
+    # counts = trial_counts(data, index_timebin, keep, "trial no")
+    # counts = thresh(counts, 0, 1, key_puff)
+    # counts = counts.drop([key_puff, "Time (ms)"], axis=1)
+
+    index_groups = index_timebin + ["stimulus", "water"]
+    counts_groups = trial_counts(data, index_groups, keep, "trial no")
+    counts_groups = thresh(counts_groups, 0, 1, key_puff)
+    counts_groups = counts_groups.drop([key_puff, "Time (ms)"], axis=1)
+
+    # mean licking frequencies
+    data_mean = mean_bin(data, index_timebin, values, keep)
 
     # threshold trials to 200ms before to 2000ms after air puff
-    data_mean = analysis_functions.thresh(data_mean, -200, 2000)
+    data_mean = thresh(data_mean, -200, 2000, key_puff)
     
-    # calculate performance for each animal for each time bin
-    index = ["condition", "animal", "delta", "delivery delta"]
-    keep = ["age", "sex", "strain", "Time (hr)", "Time (ms)"]
-    perf = analysis_functions.performance(data_mean, index, keep)
-    return (data_mean, counts, perf)
+    # performance (Lstim - Lblank)
+    perf = performance(data_mean, index_timebin, keep)
 
-def generate_trialcount_plot(counts_data):
-    '''Plot average number of trials and return the figure.
-    
-    Creates an individual plot for each condition. Plots average number of trials per bin vs time bins in training time.'''
-    g = sns.catplot(counts_data, x="Time (hr)", y="trial no", col="condition", kind='bar', color="grey")
-    
-    for ax in g.axes.flat:
-        ax.set_ylabel("Number of Trials")
-        ax.set_ylim([0, 200])
-    return g.fig
+    return (counts_groups, data_mean, perf)
