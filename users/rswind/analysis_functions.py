@@ -3,6 +3,7 @@
 # Author: Rachel Swindell
 
 import pandas as pd
+import numpy as np
 
 ################################
 #    SHORT HELPER FUNCTIONS    #
@@ -216,9 +217,9 @@ def performance(data, index, keep, key_trial, key_value, cond0, cond1):
     '''Calculate performance (difference in aggregate value between trial types)
     and return as new data frame.
 
-    Groups data by index and given trial type column, then subtracts cond0 from
-    cond1 for each group to get performance. Takes the first row from cond1 
-    group for kept columns (metadata).
+    Groups data by index and given trial type column, then computes 
+    cond1 - cond0 for each group to get performance. Takes the first row from 
+    cond1 group for kept columns (metadata).
     
     Parameters:
     data --- data frame containing trial data
@@ -250,37 +251,75 @@ def trial_counts(data, index, keep, key):
     data = pd.concat([counts, keep], axis=1).reset_index()
     return data
 
+def get_bout_start_ind(gp, key, bt_ln):
+    bout_start_ind = np.where(gp[key] - gp[key].shift() > bt_ln)[0]
+    bout_start_ind = bout_start_ind + gp.index[0]
+    bout_start_ind = np.insert(bout_start_ind, 0, gp.index[0])
+    bout_start_ind = np.append(bout_start_ind, gp.index[-1])
+
+    return bout_start_ind
+
+def get_bouts(data, group, key, name, bout_len, bout_unit):
+    '''Labels trials in bins based on the given bin size.
+    
+    Two trials are placed in separate bouts if time between the end of one trial
+    and the start of the next is more than bout_len.
+
+    Parameters:
+    data --- data frame containing trial data
+    group --- list of columns to group data by
+    key --- column to get sample times from
+    name --- name of column to write bout numbers to
+    bout_len --- time between two trials to consider them in separate bouts
+    bout_unit --- unit of bout_len
+    '''
+
+    bt_ln = pd.to_timedelta(bout_len, unit=bout_unit)
+    gps = data.groupby(group)
+    res = []
+
+    for gp_name, gp in gps: 
+        bout_starts = get_bout_start_ind(gp, key, bt_ln)
+
+        gp[name] = pd.NA
+
+        for i in range(1, len(bout_starts)):
+            gp.loc[bout_starts[i-1]:bout_starts[i],name] = i - 1
+
+        gp[group] = gp_name
+        res.append(gp)
+
+    res = pd.concat(res)
+    return res
+
+def get_n_back(data, trial_ind, bout_ind, key, n, cond0, cond1):
+
+    # get first sample for each trial
+    trial_start = data.groupby(trial_ind,as_index=False).first()
+    bt_gp = trial_start.groupby(bout_ind)[key]
+    data = data.set_index(trial_ind)
+
+    # label each trial - need to label each sample
+    for i in range(1, n+1):
+        cname = f'{i}_back'
+        
+        # shift to get n-previous trial identity
+        trial_start[cname] = bt_gp.shift(i)
+        
+        # get indicies of trials that had n-previous respective n-back trial identity
+        cond0_ind = pd.Index(trial_start.loc[(trial_start[cname] == cond0), trial_ind])
+        cond1_ind = pd.Index(trial_start.loc[(trial_start[cname] == cond1), trial_ind])
+        
+        # label all samples in relevant trials with n-back trial identity
+        data.loc[cond0_ind, cname] = cond0
+        data.loc[cond1_ind, cname] = cond1
+
+    return data.reset_index()
+
 #################################
 #    MAIN ANALYSIS FUNCTIONS    #
 #################################
 
-# TODO: refactor and make generic
-def bin_prev_identity(data, index, gp, key, cond0, cond1, name):
-    '''Returns tuple of all trials where the previous trial was blank and trials where the previous trial was stimulus.
-       
-       Parameters:
-       data --- data frame containing trial data. Must contain all of the columns in index and key
-       index --- list of columns to group data by
-       key --- column to take trial labels from'''
-    # get first sample of each trial
-    gp = data.groupby(index,as_index=False)
-    trial_start = gp.first()
-
-    # align previous trial type to trial by animal and condition
-    trial_start["one_back"] = trial_start.groupby(["condition", "animal"], as_index=False)[key].shift()
-    
-    # select trials for which previous trial was blank
-    one_back_blank = trial_start[trial_start["one_back"] == "blank"].set_index(index)
-    
-    # get all samples in trials for which previous trial was blank
-    one_back_blank_trials = data[data.set_index(index).index.isin(one_back_blank.index)]
-
-    # same as above for stimulus
-    one_back_water = trial_start[trial_start["one_back"] == "water"].set_index(index)
-    
-    # get all samples in trials for which previous trial was blank
-    one_back_water_trials = data[data.set_index(index).index.isin(one_back_blank.index)]
-    return (one_back_blank_trials, one_back_water_trials)
 
 def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
     '''Computes licking frequency at a given sample rate across trial and
@@ -389,7 +428,7 @@ def aggregate_analysis(data, min_trials, min_blank, min_stimulus):
                       "trial no", cond0, cond1, key)
     
     # number of trials for each timebin
-    # TODO: delete? (if we have counts_groups we dont need counts) <- check that the groups sum to the total
+    # TODO: delete? (if we have counts_groups we dont need counts) <- check that the groups sum to the total 1st
     # counts = trial_counts(data, index_timebin, keep, "trial no")
     # counts = thresh(counts, 0, 1, key_puff)
     # counts = counts.drop([key_puff, "Time (ms)"], axis=1)
@@ -400,12 +439,14 @@ def aggregate_analysis(data, min_trials, min_blank, min_stimulus):
     counts_groups = counts_groups.drop([key_puff, "Time (ms)"], axis=1)
 
     # mean licking frequencies
-    data_mean = mean_bin(data, index_timebin, values, keep)
+
+    data_mean = mean_bin(data, index_timebin + ["stimulus"], values, keep + ["water"])
 
     # threshold trials to 200ms before to 2000ms after air puff
     data_mean = thresh(data_mean, -200, 2000, key_puff)
     
     # performance (Lstim - Lblank)
-    perf = performance(data_mean, index_timebin, keep)
+    perf = performance(data_mean, index_timebin, keep, key, "lick", 
+                       cond0, cond1)
 
-    return (counts_groups, data_mean, perf)
+    return (data_mean, counts_groups, perf)
