@@ -1,0 +1,11 @@
+csv_directory = C:\Users\swind\Documents\lab_work\Barth\behavior_analysis\mouse_analysis\full_trial_analysis\sample_data
+metadata_file = C:\Users\swind\Documents\lab_work\Barth\behavior_analysis\mouse_analysis\full_trial_analysis\sample_metadata.xlsx
+default_acc_time = 1 days
+
+time_bin = 240 minutes
+freq_window = None milliseconds, length of rolling window
+freq_bin = 100 milliseconds, length of discrete time bin
+
+min_trials = 10 minimum number of trials in a bin to keep
+min_water_trials = 0 minimum number of water trials
+min_blank_trials = 0 minimum number of water trials
