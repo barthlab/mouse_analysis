@@ -109,6 +109,7 @@ def label_trials(data):
     else:
         data["stimulus"] = data["water"]
         data["stimulus"] = data["stimulus"].replace({"water":"stimulus", "no water":"blank"})
+    data["type"] = data["water"] + " & " + data["stimulus"]
     return data
 
 

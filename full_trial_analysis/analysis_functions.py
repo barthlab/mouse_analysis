@@ -394,17 +394,45 @@ def agg_by_prev_trial(data, agg_data, n, min_trials, min_blank_trials, min_water
         perf = pd.concat([perf, ps_perf, pb_perf])
         return mean_statistics, counts, perf
 
-def quinttrans(start, end, gp):
+def get_trials(start, end, gp):
     return gp[(gp["trial no"] > start.loc[gp.name][0]) & (gp["trial no"] <= end.loc[gp.name][0])]
 
-def get_nth_quintile(data, quint):
-    trials_in_quint = data.groupby(["animal", "trial no"]).first()
-    trials_in_quint = trials_in_quint.groupby(["animal", "day_delta"]).count()*.2
-    trials_in_quint = np.floor(trials_in_quint)
-    start = (trials_in_quint*(quint-1)).astype(int)
-    end = (trials_in_quint*quint).astype(int)
-    justquint = data.groupby(["animal", "day_delta"]).apply(lambda x: quinttrans(start, end, x))
-    return justquint.reset_index(drop=True)
+def get_nth_part_day(data, frac, nth_part):
+    if nth_part >= frac:
+        print("Partition to return must be less than the number of partitions")
+        return
+    # total number of trials per day
+    total_trials_day = data.groupby(["animal", "trial no"]).first()
+    total_trials_day = total_trials_day.groupby(["animal", "day_delta"]).count()
+    # number of trials in a partition per day, rounded down
+    trials_per_part = np.floor(total_trials_day*(1/frac))
+
+    # first and last trial in partition for each day
+    start = (trials_per_part*(nth_part-1))
+    end = (trials_per_part*trials_per_part)
+    
+    # adjust first and last trial numbers for number of trials done on previous 
+    # days
+    for i in range(1, len(data["day_delta"].unique()) + 1):
+        start = start + total_trials_day.groupby("animal").shift(i).fillna(0)
+        end = end + total_trials_day.groupby("animal").shift(i).fillna(0)
+    # convert to int for indexing
+    start = start.astype(int)
+    end = end.astype(int)
+    # get trials in partition
+    part = data.groupby(["animal", "day_delta"]).apply(lambda x: get_trials(start, end, x))
+    return part.reset_index(drop=True)
+
+def day_to_label(min, day):
+    day = int(day)
+    if day < 0:
+        return "ACC " + str(abs(min - day) + 1)
+    return "SAT " + str(day + 1)
+
+def sum_trials(data, group, key):
+    return data.groupby(group).sum()[key].reset_index()
+
+
 
 #################################
 #    MAIN ANALYSIS FUNCTIONS    #
@@ -438,7 +466,7 @@ def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
 
     index_trial = ["condition", "animal","trial no"]
 
-    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water"]
+    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water", "type"]
     values = ["lick", "poke"]
 
 
@@ -475,8 +503,10 @@ def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
     # bin by day
     data = get_first_sample(data, index_trial, key_time, key_start)
     index_trial.append(key_puff)
+
     data = bin_by_time(data, 1, "day", index_trial, [], 
-                       keep + values + ["delta"], key_start, offset=pd.to_timedelta(12, unit="h"))
+                       keep + values + ["delta"], key_start, 
+                       offset=pd.to_timedelta(12, unit="h"))
     index_trial.pop()
     data = delta(data, index_trial, "animal", key_start, key_acc, key_day)
 
@@ -513,7 +543,7 @@ def bin_lickfreq_analysis(data, freq_window, time_bin):
 
     index_trial = ["condition", "animal","trial no"]
 
-    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water"]
+    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water", "type"]
     values = ["lick", "poke"]
 
     ant_start, ant_end = freq_window
@@ -543,10 +573,15 @@ def bin_lickfreq_analysis(data, freq_window, time_bin):
 
     # bin by day
     data = get_first_sample(data, index_trial, key_time, key_start)
+
+    # label days
     data = bin_by_time(data, 1, "day", index_trial, [], 
                        keep + values + ["delta"], key_start, 
                        offset=pd.to_timedelta(12, unit="h"))
     data = delta(data, index_trial, "animal", key_start, key_acc, key_day)
+    data = time_to_float(data, "Day", "day_delta", "D")
+    minday = int(data["Day"].min())
+    data["Day"] = data["Day"].apply(lambda x: day_to_label(minday, x))
 
     # convert time bins and trial time to float representations
     data = time_to_float(data, "Time (hr)", key_delta, "m")
