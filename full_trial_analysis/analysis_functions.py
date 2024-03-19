@@ -57,7 +57,6 @@ def get_first_sample(data, index, key, name):
        index --- list of columns to group data by
        key --- column to take start time value from
        name --- name of column to write first sample to'''
-
     data = data.set_index(index)
     data[name] = data.groupby(index)[key].first()
     data = data.reset_index()
@@ -141,7 +140,7 @@ def bin_by_time(data, bin_size, bin_unit, index, values_mean, values_first, key,
 
     return data_sample
 
-def delta(data, index, gp, key, key_acc, name):
+def delta(data, index, key, key_acc, key_offset, name):
     '''Calculates time from start of SAT to trial and returns data in given 
     column.
 
@@ -158,17 +157,13 @@ def delta(data, index, gp, key, key_acc, name):
     name --- name of column to write delta to'''
 
     data = data.set_index(index)
-    # sort to ensure that group takes first sample by ordered key in group
-    first_sample_group = data.sort_values(key).groupby(gp)[key].first() 
-    # subtract to align delta to start of SAT, rather than to start of train
-    first_sample_acc = data.groupby(gp)[key_acc].first()
-    delta = data[key] - first_sample_group - first_sample_acc
+    delta = data[key] - (data[key_offset] + data[key_acc])
     data[name] = delta
     return data.reset_index()
 
 # helper functions for timebin aggregation
 
-def drop_group(data, min_trials, min0, min1, index, col, cond0, cond1, key):
+def drop_group_helper(data, min_trials, min0, min1, index, col, cond0, cond1, key):
     '''Drops bins with fewer than the given number of trials and returns data 
        without those bins.
 
@@ -196,16 +191,15 @@ def drop_group(data, min_trials, min0, min1, index, col, cond0, cond1, key):
     gp_index.append(key)
     group = data.groupby(gp_index)
     data = data.set_index(gp_index)
-
     #filter bins with fewer than min_blank blank or min_water water trials
-    counts = group.count().unstack(level=key)
-    cond = (counts.loc[:, (col, cond0)] > min0) & (counts.loc[:, (col, cond1)] > min1) 
+    counts = group.count().unstack(level=key).fillna(0)
+    cond = (counts.loc[:, (col, cond0)] >= min0) & (counts.loc[:, (col, cond1)] >= min1) 
     data = data[cond]
 
     #filter bins with fewer than min_trials total trials
     total_group = data.groupby(index) 
     total_counts = total_group.count()
-    data = data[total_counts[col] > min_trials]
+    data = data[total_counts[col] >= min_trials]
     data = data.reset_index()
 
     return data
@@ -269,7 +263,7 @@ def trial_counts(data, index, keep, key):
     to select counts does not affect the result as long as it is not in index.'''
 
     gp = data.groupby(index)
-    counts = gp[key].count()
+    counts = gp[key].nunique()
     keep = gp.first()[keep]
 
     data = pd.concat([counts, keep], axis=1).reset_index()
@@ -395,42 +389,49 @@ def agg_by_prev_trial(data, agg_data, n, min_trials, min_blank_trials, min_water
         return mean_statistics, counts, perf
 
 def get_trials(start, end, gp):
-    return gp[(gp["trial no"] > start.loc[gp.name][0]) & (gp["trial no"] <= end.loc[gp.name][0])]
+    if ~gp.empty:
+        return gp[(gp["trial no"] > start.loc[gp.name]) & (gp["trial no"] <= end.loc[gp.name])]
+    else:
+        return []
 
 def get_nth_part_day(data, frac, nth_part):
-    if nth_part >= frac:
+# TODO: doesn't work correctly with string days
+    if nth_part > frac:
         print("Partition to return must be less than the number of partitions")
         return
+    ind = ["condition", "animal", "Day"]
     # total number of trials per day
-    total_trials_day = data.groupby(["animal", "trial no"]).first()
-    total_trials_day = total_trials_day.groupby(["animal", "day_delta"]).count()
+    total_trials_day= data.sort_values(['condition', 'animal', 'trial no']).groupby(['condition', 'animal', 'Day']).last()['trial no']
+    total_trials_day1 = total_trials_day.reset_index().groupby(['condition', 'animal']).first().reset_index().set_index(['condition', 'animal', 'Day'])['trial no']
+    total_trials_day = total_trials_day.groupby(['condition', 'animal']).diff().fillna(total_trials_day1)
     # number of trials in a partition per day, rounded down
     trials_per_part = np.floor(total_trials_day*(1/frac))
-
     # first and last trial in partition for each day
     start = (trials_per_part*(nth_part-1))
-    end = (trials_per_part*trials_per_part)
-    
+    end = (trials_per_part*nth_part)
     # adjust first and last trial numbers for number of trials done on previous 
     # days
-    for i in range(1, len(data["day_delta"].unique()) + 1):
+    for i in range(1, len(data["Day"].unique()) + 1):
         start = start + total_trials_day.groupby("animal").shift(i).fillna(0)
         end = end + total_trials_day.groupby("animal").shift(i).fillna(0)
     # convert to int for indexing
     start = start.astype(int)
     end = end.astype(int)
     # get trials in partition
-    part = data.groupby(["animal", "day_delta"]).apply(lambda x: get_trials(start, end, x))
+    part = data.groupby(['condition', "animal", "Day"]).apply(lambda x: get_trials(start, end, x))
     return part.reset_index(drop=True)
 
 def day_to_label(min, day):
     day = int(day)
     if day < 0:
-        return "ACC " + str(abs(min - day) + 1)
+        return "ACC " + str(day + 1)
     return "SAT " + str(day + 1)
 
-def sum_trials(data, group, key):
-    return data.groupby(group).sum()[key].reset_index()
+def sum_trials(data, group, keep, key):
+    tot = data.groupby(group)[key].sum().rename('trial no')
+    keep = data.groupby(group).first()[keep]
+    res = pd.concat([tot, keep], axis=1).reset_index()
+    return res
 
 
 
@@ -438,8 +439,81 @@ def sum_trials(data, group, key):
 #    MAIN ANALYSIS FUNCTIONS    #
 #################################
 
+def align_to_timebin_and_day(data, time_bin, key_dict, keep, index, values):
+    time = key_dict["timestamp"]
+    acc = key_dict["acc"]
+    millisbin = key_dict['millis bin']
+    offset = key_dict['offset']
 
-def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
+    key_start = "trial start"
+    key_delta = "delta"
+    key_day = "day_delta"
+
+    # bin by time (minutes)
+    data = get_first_sample(data, index, time, key_start)
+    if millisbin != None:
+        index.append(millisbin)
+        keep.remove(millisbin)
+
+    data = bin_by_time(data, time_bin, "min", index, [], keep + [time, offset] + values, key_start,
+                       offset=pd.to_timedelta(12, unit="h"))
+    if millisbin != None:
+        index.pop()
+        keep.append(millisbin)
+    data = delta(data, index, key_start, acc, offset, key_delta)
+    data = time_to_float(data, "Time (hr)", key_delta, "m")
+    data["Time (hr)"] = data["Time (hr)"]/60.
+
+    # bin by day
+    data = get_first_sample(data, index, time, key_start)
+    if millisbin != None:
+        index.append(millisbin)
+        keep.remove(millisbin)
+    data = bin_by_time(data, 1, "day", index, [], 
+                       keep + values + [time, offset, key_delta, "Time (hr)"], key_start, 
+                       offset=pd.to_timedelta(12, unit="h"))
+    if millisbin != None:
+        index.pop()
+        keep.append(millisbin)
+    data = delta(data, index, key_start, acc, offset, key_day)
+    data = time_to_float(data, "Day", "day_delta", "D")
+    #minday = int(data["Day"].min())
+    #data["Day"] = data["Day"].apply(lambda x: day_to_label(minday, x))
+
+    data = data.drop(columns=key_start)
+    return data
+
+def bin_lickfreq(data, freq_window, time_bin, key_dict, keep, values):
+    puff = key_dict["millis bin"]
+    time = key_dict["timestamp"]
+    index_trial = ["condition", "animal","trial no"]
+    ant_start, ant_end = freq_window
+    key_start = "first sample"
+
+    df = data.copy()
+    data = puff_delta(df, index_trial, key_dict["timestamp"], key_dict["delay"], puff)
+
+    # for binning trials based on trial initiation
+    # important for edge case where trial spans bins and anticipatory 
+    # period happens after bin end
+    data = get_first_sample(data, index_trial, time, key_start)
+    timestamp = key_dict['timestamp']
+    key_dict['timestamp'] = 'first sample'
+
+    # filter for anticipatory licking (300 ms before water)
+    data = data[data[puff] >= pd.to_timedelta(ant_start, unit="ms")]
+    data = data[data[puff] <= pd.to_timedelta(ant_end, unit="ms")]
+    
+    # number of anticipatory licks divided by 
+    # length of anticipatory licking period    
+    data = one_bin_lickfreq(data, ant_end - ant_start, index_trial, values, 
+                            keep + [time, key_start, key_dict['offset']])
+    data = align_to_timebin_and_day(data, time_bin, key_dict, keep, index_trial, values)
+    key_dict['timestamp'] = timestamp
+
+    return data
+
+def full_lickfreq(data,freq_window, freq_bin, time_bin, key_dict, keep, values):
     '''Computes licking frequency at a given sample rate across trial and
     returns raw licking frequency.
     
@@ -455,252 +529,109 @@ def lickfreq_analysis(data, freq_window, freq_bin, time_bin):
     time_bin --- size of bin for multi-trial binning over entire training 
                  (minutes)
     '''
-    # parameters
-    key_time = "timestamp"
-    key_delay = "delay"
-    key_puff = "puff delta"
-    key_start = "trial start"
-    key_delta = "delta"
-    key_day = "day_delta"
-    key_acc = "acc"
-
+    puff = key_dict["millis bin"]
+    time = key_dict["timestamp"]
     index_trial = ["condition", "animal","trial no"]
+    offset = key_dict['offset']
 
-    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water", "type"]
-    values = ["lick", "poke"]
-
-
-    # do not modify loaded data
     df = data.copy()
-
-    # calculated time from sample to air puff
-    data = puff_delta(df, index_trial, key_time, key_delay, key_puff)
-
+    data = puff_delta(df, index_trial, time, key_dict["delay"], puff)
     # lick frequency
     if freq_window != None:
         # rolling window
-        keep.append(key_puff)
-        data = rolling_time(data, freq_window, index_trial, values, keep, 
-                                         key_time)
+        keep.append(puff)
+        data = rolling_time(data, freq_window, index_trial, values, keep + offset, 
+                                         time)
         keep.pop()
     else:
         # discrete bins
-        data = bin_by_time(data, freq_bin, "ms", index_trial, values, keep, key_puff)
+        data = bin_by_time(data, freq_bin, "ms", index_trial, values, keep + [time, offset], puff)
 
     # resampling for cross-trial sample alignment
-    data = bin_by_time(data, 100, "ms", index_trial, [], keep + values, key_puff)
-
-    # label start of trial at each sample
-    data = get_first_sample(data, index_trial, key_time, key_start)
-
-    # bin by time (minutes)
-    index_trial.append(key_puff)
-    data = bin_by_time(data, time_bin, "min", index_trial, [], keep + values, key_start)
-    index_trial.pop()
-    # calulate time bin relative to start of SAT training
-    data = delta(data, index_trial, "animal", key_start, key_acc, key_delta)
-
-    # bin by day
-    data = get_first_sample(data, index_trial, key_time, key_start)
-    index_trial.append(key_puff)
-
-    data = bin_by_time(data, 1, "day", index_trial, [], 
-                       keep + values + ["delta"], key_start, 
-                       offset=pd.to_timedelta(12, unit="h"))
-    index_trial.pop()
-    data = delta(data, index_trial, "animal", key_start, key_acc, key_day)
-
-    # convert time bins and trial time to float representations
-    data = time_to_float(data, "Time (hr)", key_delta, "m")
-    data["Time (hr)"] = data["Time (hr)"]/60.
-    data = time_to_float(data, "Time (ms)", key_puff, "ms")
-
-
+    data = bin_by_time(data, 100, "ms", index_trial, [], keep + [time, offset] + values, puff)
+    data = time_to_float(data, "Time (ms)", puff, "ms")
+    data = align_to_timebin_and_day(data, time_bin, key_dict, keep + [puff,"Time (ms)"], index_trial, values)
 
     return data
 
-def bin_lickfreq_analysis(data, freq_window, time_bin):
-    '''Computes licking frequency in the given licking window and
-    returns raw licking frequency.
-    
-    Parameters provide flexibility in multiple ways for both cross-trial and 
-    cross-training binning.
+def adj_index(index, kp, key_dict):
+    # include time bin for aggregate grouping    
+    index_timebin = index + [key_dict["time bin"]]
+    if key_dict["time bin"] in kp:
+        kp.remove(key_dict["time bin"])
 
-    Parameters:
-    data --- data to be analyzed
-    freq_window --- tuple indicating start and 
-    time_bin --- size of bin for multi-trial binning over entire training 
-                 (minutes)
-    '''
-    # parameters
-    key_time = "timestamp"
-    key_delay = "delay"
-    key_puff = "puff delta"
-    key_start = "trial start"
-    key_delta = "delta"
-    key_day = "day_delta"
-    key_acc = "acc"
+    # include millis bin for counting (number of records at any sample is number
+    # of trials in a bin) - only for full trial analysis (i.e. more than one 
+    # sample per trial)
+    millisbin = key_dict["millis bin"]
+    if millisbin != None:
+        index_timebin = index_timebin + [millisbin]
+        if millisbin in kp:
+            kp.remove(millisbin)
+    return index_timebin, kp
 
-    index_trial = ["condition", "animal","trial no"]
-
-    keep = ["timestamp", "age", "sex", "strain", "acc", "cage", "stimulus", "water", "type"]
-    values = ["lick", "poke"]
-
-    ant_start, ant_end = freq_window
-
-    # do not modify loaded data
-    df = data.copy()
-
-    # calculated time from sample to air puff
-    data = puff_delta(data, index_trial, key_time, key_delay, key_puff)
-
-    # filter for anticipatory licking (300 ms before water)
-    data = data[data[key_puff] >= pd.to_timedelta(ant_start, unit="ms")]
-    data = data[data[key_puff] <= pd.to_timedelta(ant_end, unit="ms")]
-    
-    # number of anticipatory licks divided by 
-    # length of anticipatory licking period
-    data = one_bin_lickfreq(data, ant_end - ant_start, index_trial, values, keep)
-    
-    # label start of trial at each sample
-    data = get_first_sample(data, index_trial, key_time, key_start)
-
-    # bin by time (minutes)
-    data = bin_by_time(data, time_bin, "min", index_trial, [], keep + values, key_start)
-
-    # calulate time bin relative to start of SAT training
-    data = delta(data, index_trial, "animal", key_start, key_acc, key_delta)
-
-    # bin by day
-    data = get_first_sample(data, index_trial, key_time, key_start)
-
-    # label days
-    data = bin_by_time(data, 1, "day", index_trial, [], 
-                       keep + values + ["delta"], key_start, 
-                       offset=pd.to_timedelta(12, unit="h"))
-    data = delta(data, index_trial, "animal", key_start, key_acc, key_day)
-    data = time_to_float(data, "Day", "day_delta", "D")
-    minday = int(data["Day"].min())
-    data["Day"] = data["Day"].apply(lambda x: day_to_label(minday, x))
-
-    # convert time bins and trial time to float representations
-    data = time_to_float(data, "Time (hr)", key_delta, "m")
-    data["Time (hr)"] = data["Time (hr)"]/60.
-    
-    return data
-
-def aggregate_analysis(data, min_trials, min_blank, min_stimulus, keep):
-    '''Computes aggregate values for time bins (mean lick frequency, counts, 
-    performance) and return them as separate data frames.
-    
-    Drops time bins with fewer than the given number of trials. Thresholds
-    samples from 200 ms before air delivery (shortest amount of time random 
-    delay can be) to 2000 ms after water delivery (shortest amount of time
-    until samples for a trial stop).
-
-    Parameters:
-    data--- data frame to calculate aggregate values from
-    min_trials --- minimum total number of trials to keep a bin
-    min_stimulus --- minimum number of stimulus trials to keep a bin
-    min_blank --- minimum number of blank trials to keep a bin
-    keep --- list of columns to add to the columns kept after analysis'''
-    
-    # parameters
-    key_time = "timestamp"
-    key_delay = "delay"
-    key_puff = "puff delta"
-    key_start = "trial start"
-    key_delta = "delta"
-    key_acc = "acc"
-
-    index_animal = ["condition", "animal"]
-    index_timebin = index_animal + [key_delta, key_puff]
-
-    keep = ["age", "sex", "strain", "acc","cage", "Time (hr)", "Time (ms)"] + keep
-    values = ["lick", "poke"]
+def drop_group(data, mins, key_dict, key, index, keep):
+    kp = keep.copy()
+    # include time bin for aggregate grouping    
+    index_timebin = index + [key_dict["time bin"]]
+    if key_dict["time bin"] in kp:
+        kp.remove(key_dict["time bin"])
 
     # drop bins with fewer than the given number of total, water, or blank trials
-    # group by delta for timebins
-    # group by key_puff for counting (# samples at any puff delta is number of
-    # trials in a bin), if trials are aligned on key_puff
-    key = "stimulus"
-    cond0 = "blank"
-    cond1 = "stimulus"
-    data = drop_group(data, min_trials, min_blank, min_stimulus, index_timebin, 
-                      "trial no", cond0, cond1, key)
+    stimulus = key_dict["stimulus type"]
+    cond0, cond1 = np.sort(data[stimulus].unique())
+    group = data.groupby(index_timebin + [stimulus])
+    data = data.set_index(index_timebin)
+
+    #filter bins with fewer than min_blank blank or min_water water trials
+    counts = group[key].nunique().unstack(level=stimulus).fillna(0)
+    cond = (counts.loc[:, cond0] >= mins["min_blank"]) & (counts.loc[:, cond1] >= mins["min_stimulus"]) 
+    data = data[cond]
+
+    #filter bins with fewer than min_trials total trials
+    total_group = data.groupby(index_timebin) 
+    total_counts = total_group[key].nunique()
+    data = data[total_counts >= mins["min_trials"]]
+    data = data.reset_index()
+    return data
+
+def agg(data, key_dict, index, keep, values):
+    kp = keep.copy()
+    millisbin = key_dict["millis bin"]
+    millis = key_dict["Time (ms)"]
+    stimulus = key_dict["stimulus type"]
+    water = key_dict["water delivery"]
+
+    index_timebin = index + [key_dict["time bin"]]
+    if key_dict["time bin"] in kp:
+        kp.remove(key_dict["time bin"])
+
+    # number of trials for each timebin by stimulus type
+    index_groups = index_timebin + [stimulus, water]
+    cond0, cond1 = np.sort(data[stimulus].unique())
+    if stimulus in kp:
+        kp.remove(stimulus)
+    if water in kp:
+        kp.remove(water)
     
-    # number of trials for each timebin
-    # TODO: delete? (if we have counts_groups we dont need counts) <- check that the groups sum to the total 1st
-    # counts = trial_counts(data, index_timebin, keep, "trial no")
-    # counts = thresh(counts, 0, 1, key_puff)
-    # counts = counts.drop([key_puff, "Time (ms)"], axis=1)
-
-    index_groups = index_timebin + ["stimulus", "water"]
-    counts_groups = trial_counts(data, index_groups, keep, "trial no")
-    counts_groups = thresh(counts_groups, 0, 1, key_puff)
-    counts_groups = counts_groups.drop([key_puff, "Time (ms)"], axis=1)
-
+    counts_groups = trial_counts(data, index_groups, kp, key_dict["trial no"])
+    
     # mean licking frequencies
-
-    data_mean = mean_bin(data, index_timebin + ["stimulus"], values, keep + ["water"])
+    if millisbin != None:
+        index_timebin = index_timebin + [millisbin]
+        if millisbin in kp:
+            kp.remove(millisbin)
+            
+    data_mean = mean_bin(data, index_timebin + [stimulus], values, kp + [water])
 
     # threshold trials to 200ms before to 2000ms after air puff
-    data_mean = thresh(data_mean, -200, 2000, key_puff)
-    
+    if millisbin != None:
+        data_mean = thresh(data_mean, -200, 2000, millisbin)
+
     # performance (Lstim - Lblank)
-    perf = performance(data_mean, index_timebin, keep, key, "lick", 
+    perf = performance(data_mean, index_timebin, kp, stimulus, key_dict["licks"], 
                        cond0, cond1)
+    #poke_perf = performance(data_mean, index_timebin, kp, stimulus, 'pokestart', 
+    #                   cond0, cond1)
 
-    return (data_mean, counts_groups, perf)
-
-def bin_aggregate_analysis(data, min_trials, min_blank, min_stimulus, keep):
-    '''Computes aggregate values for time bins (mean lick frequency, counts, 
-    performance) and return them as separate data frames.
-    
-    Drops time bins with fewer than the given number of trials. Thresholds
-    samples from 200 ms before air delivery (shortest amount of time random 
-    delay can be) to 2000 ms after water delivery (shortest amount of time
-    until samples for a trial stop).
-
-    Parameters:
-    data--- data frame to calculate aggregate values from
-    min_trials --- minimum total number of trials to keep a bin
-    min_stimulus --- minimum number of stimulus trials to keep a bin
-    min_blank --- minimum number of blank trials to keep a bin
-    keep --- list of columns to add to the columns kept after analysis'''
-    
-    # parameters
-    key_time = "timestamp"
-    key_delay = "delay"
-    key_puff = "puff delta"
-    key_start = "trial start"
-    key_delta = "delta"
-    key_acc = "acc"
-
-    index_animal = ["condition", "animal"]
-    index_timebin = index_animal + [key_delta]
-
-    keep = ["age", "sex", "strain", "acc","cage", "Time (hr)"] + keep
-    values = ["lick", "poke"]
-
-    # drop bins with fewer than the given number of total, water, or blank trials
-    # group by delta for timebins
-    # group by key_puff for counting (# samples at any puff delta is number of
-    # trials in a bin), if trials are aligned on key_puff
-    key = "stimulus"
-    cond0 = "blank"
-    cond1 = "stimulus"
-    data = drop_group(data, min_trials, min_blank, min_stimulus, index_timebin, 
-                      "trial no", cond0, cond1, key)
-    
-    index_groups = index_timebin + ["stimulus", "water"]
-    counts_groups = trial_counts(data, index_groups, keep, "trial no")
-
-    # mean licking frequencies
-    data_mean = mean_bin(data, index_timebin + ["stimulus"], values, keep + ["water"])
-    
-    # performance (Lstim - Lblank)
-    perf = performance(data_mean, index_timebin, keep, key, "lick", 
-                       cond0, cond1)
-
-    return (data_mean, counts_groups, perf)
+    return (data_mean, counts_groups, perf)#, poke_perf)

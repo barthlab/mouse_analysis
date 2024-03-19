@@ -5,16 +5,18 @@
 import re
 import os
 import sys
-
+import datetime
 import pandas as pd
 
 # open and format animal data
 def time_from_file(filename):
     "Convert filename to timestamp for start of trials and return timestamp."
+    dt = re.findall("\d\d_\d\d_\d\d_?~?T_?~?\d\d_\d\d_\d\d", filename)[0]
+    dt = dt.replace("_", "-", 2).replace("~", "-", 2).replace("_T_", " ").replace("-T-", " ").replace("_", ":")
+    return datetime.datetime.strptime(dt,'%m-%d-%y %H:%M:%S')
 
-    datetime = re.findall("\d\d_\d\d_\d\d_?~?T_?~?\d\d_\d\d_\d\d", filename)[0]
-    datetime = datetime.replace("_", "-", 2).replace("~", "-", 2).replace("_T_", " ").replace("_", ":")
-    return pd.Timestamp(datetime)
+def set_noon(t):
+    return datetime.datetime(t.year, t.month, t.day, 12, 0, 0)
 
 # TODO: change  file loading to handle pseudo data (include 6th column to id stimulus vs blank trials)
 # all reward has 6-column acc and 5-column (regular SAT) SAT ugh
@@ -34,8 +36,9 @@ def load_file(filename):
         mp = {0:"timestamp",1:"poke", 2:"lick", 3:"condition code", 4:"delay", 5:"stimulus"}
     
     data = data.rename(columns=mp)
-    datetime = time_from_file(filename)
-    data["timestamp"] = pd.to_datetime(data["timestamp"], unit="s", origin=pd.Timestamp(datetime))
+    dt = time_from_file(filename)
+    data["timestamp"] = pd.to_datetime(data["timestamp"], unit="s", origin=dt)
+    data['offset'] = set_noon(dt)
     data["delay"] = pd.to_timedelta(data["delay"], unit="ms")
     return data
 
@@ -131,7 +134,7 @@ def format_data(data):
 
 # TODO: handle missing metadata file more gracefully 
 # TODO: handle acclimation in hours or days
-def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
+def make_animal_df(andir, metadata, animal_name, meta_vals):
     '''Load and format all data files for one animal and return as a data frame.
 
     Will fail if there are non-data files in the given directory or if animal id column in metadata file is not named correctly.
@@ -143,14 +146,23 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
     metadata --- dataframe containing metadata about an animal associated with animal id
                  if animal id column is not named exactly 'Animal ID', will fail
     animal_name --- ID code of animal
-    acc_col_name --- name of column containing length of acclimation in metadata file
-    default_acc --- default length of acclimation to assume if none is listed'''
+    meta_vals --- list of colums to include metadata from. Must include 'acc' for length of acclimation (in days).'''
+    
+    if metadata.empty:
+        print("Must include metadata file including at least acclimation time")
+        sys.exit(1)
+    if 'acc' not in metadata.columns:
+        print("Must include length of acclimation under column named acc")
+        sys.exit(1)
+    if 'acc' not in meta_vals:
+        print("Must include acc in list of colums to be selected from metadata")
+        sys.exit(1)
 
     fs = os.listdir(andir)
     # ensure files concatenated in time order
     fs.sort()
     animal = []        
-    # this will load all files in a given directory - should only have the relevant training files
+    # this will load all files in a given directory
     start = 0
     for f in fs:
         f_path = andir + "\\" + f
@@ -165,77 +177,53 @@ def make_animal_df(andir, metadata, animal_name, acc_col_name, default_acc):
             start = data.tail(1)["trial no"].reset_index(drop=True)[0]
             data = label_trials(data)
             animal.append(data)
+    # load metadata
     if animal == []:
         print(f"{animal_name} has no behavior files")
         return pd.DataFrame()
     else:
         animal = pd.concat(animal, ignore_index=True)
-    
-        # load metadata if the animal has it
-        if not metadata.empty:
-            try:
-                metadata[metadata["Animal ID"] == animal_name].empty
-            except KeyError:
-                print("Animal ID column must be named 'Animal ID'")
-                sys.exit(1)
-
-            if not (metadata[metadata["Animal ID"] == animal_name].empty):
-                an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
-                try:
-                    animal["acc"] = an_meta.loc[0, acc_col_name]
-                except KeyError:
-                    print(f"Number of acclimation days not named {acc_col_name}")
-                try:
-                    animal["age"] = an_meta.loc[0, "Age"]
-                except:
-                    animal["age"] = pd.NA
-                    print(f"{animal_name} Age not in metadata file")
-                try:
-                    animal["cage"] = an_meta.loc[0, "Cage"]
-                except:
-                    animal["cage"] = ''
-                    print(f"{animal_name} Cage not in metadata file")
-                try:
-                    animal["sex"] = an_meta.loc[0, "Sex"]
-                except KeyError:
-                    animal["sex"] = ''
-                    print(f"{animal_name} Sex not in metadata file")
-                try:
-                    animal["strain"] = an_meta.loc[0, "Strain"]   
-                except KeyError:
-                    animal["strain"] = ''
-                    print(f"{animal_name} Strain not in metadata file")
-            else:
-                print(f"{animal_name}: no metadata")
-                animal["acc"] = default_acc
-        else:
-            animal["acc"] = default_acc
-            animal["age"] = pd.NA
-            animal["sex"] = ''
-            animal["strain"] = ''
-            animal["cage"] = ''
-            print("No metadata")
+        try:
+            metadata[metadata["Animal ID"] == animal_name].empty
+        except KeyError:
+            print("Animal ID column must be named 'Animal ID'")
+            sys.exit(1)
             
+        if not (metadata[metadata["Animal ID"] == animal_name].empty):
+            an_meta =  metadata[metadata["Animal ID"] == animal_name].reset_index()
+            for key in meta_vals:
+                try:
+                    animal[key] = an_meta.loc[0, key]
+                except KeyError:
+                    print(f"{animal_name} {key} not in metadata file")
+                    if key == 'acc':
+                        sys.exit(1)
+        else:
+            print(f"{animal_name}: no metadata")
+            for key in meta_vals:
+                animal[key] = pd.NA
+
         animal["animal"] = animal_name
+        animal['offset'] = animal.loc[0, 'offset']
         animal = format_data(animal)
         return animal
 
-def make_condition_df(condir, condition, metadata, default_acc):
+def make_condition_df(condir, condition, metadata, meta_vals):
     '''Load and format all data files for all animals in a condition, and return as a data frame.
     
     Requires all animals to be included to be in the same directory, which should have no other folders or files in it.
     
     Parameters:
-    condit --- path of directory containing animal subdirectories which contain data files
+    condir --- path of directory containing animal subdirectories which contain data files
     condition --- name of condition (e.g. Acc, SAT1)
     metadata --- data frame containing relevant metadata about animals in condition (can contain other information as well)
-    default_acc --- default length of acclimation to assume if none is listed'''
+    meta_vals --- list of colums to include metadata from. Must include 'acc' for length of acclimation (in days).'''
     
     andirs = os.listdir(condir)
     animals = []
     for animal_name in andirs:
         animal_path = condir + "\\" + animal_name
-        animals.append(make_animal_df(animal_path, metadata, animal_name, 'acc', default_acc))
+        animals.append(make_animal_df(animal_path, metadata, animal_name, meta_vals))
     animals = pd.concat(animals, ignore_index=True)
     animals["condition"] = condition
     return animals
