@@ -1802,7 +1802,7 @@ def fixed_window_wrapper(formatted_res, keys, mins, keep, vals, index, tb, prog,
         ant_analysis = run_analysis(formatted_res, 'bin', 
                         keys, mins, keep, vals, index, [analysis_window, tb],prog, out_files, add_val.get())
     else:
-        root.after(1, last20_wrapper(ant_analysis, keys, mins, keep, vals, index, prog, out_files))
+        root.after(1, f(ant_analysis, keys, mins, keep, vals, index, prog, out_files))
 
 def last20_wrapper(ant_analysis, keys, mins, keep, vals, index, out_files, prog):
     num, denom = num_val.get().split('/')
@@ -2531,6 +2531,6 @@ for i in range(0, 6):
     analy_lf.grid_rowconfigure(i, weight=1)
     analy_lf.grid_columnconfigure(i, weight=1)
     files_lf.grid_rowconfigure(i, weight=1)
-
-# Start the main loop
-root.mainloop()
+if __name__ == '__main__':
+    # Start the main loop
+    root.mainloop()
