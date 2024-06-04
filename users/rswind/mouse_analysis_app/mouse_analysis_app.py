@@ -357,7 +357,7 @@ def style_axes(g, xlabel, ylabel, xlim, ylim, xmajmult, xminmult, ymajmult,
     else:
         style_axes_helper(g.figure.axes[0], '', xlabel, ylabel, xlim, ylim, xmaj, xmin, ymaj, ymin)
 
-    g.figure.suptitle(suptitle, fontsize=25, y=1.02, x=0.5)
+    g.figure.suptitle(suptitle, fontsize=12, y=0.98, x=0.5)
     g.figure.subplots_adjust(hspace=hspace, wspace=wspace)
 
 def style_hr(g, xlabel, ylabel, xlim, ylim, hspace=0.45, wspace=0.25, 
@@ -1603,7 +1603,7 @@ def after_format_wrapper(formatted_res, prog, name):
 def fixed_window_step1(data, time_bin, key_dict, keep, values, 
                       start, end, agg_arg):
     data = puff_delta(data, ['condition', 'animal', 'trial no'], "timestamp", "delay", "puff delta")
-    root.after(1, fixed_window_step2(data, time_bin, key_dict, keep, values, 
+    root.after(1, lambda: fixed_window_step2(data, time_bin, key_dict, keep, values, 
                                      start, end, agg_arg))
 
 def fixed_window_step2(data, time_bin, key_dict, keep, values, 
@@ -1614,7 +1614,7 @@ def fixed_window_step2(data, time_bin, key_dict, keep, values,
     # matches Matlab v16 analysis behavior
     data = get_first_sample(data, ['condition', 'animal', 'trial no'], 'timestamp', "first sample")
     key_dict['timestamp'] = 'first sample'
-    root.after(1, fixed_window_step3(data, time_bin, key_dict, keep, values,
+    root.after(1, lambda: fixed_window_step3(data, time_bin, key_dict, keep, values,
                                      start, end, agg_arg))
 
 def fixed_window_step3(data, time_bin, key_dict, keep,
@@ -1622,7 +1622,7 @@ def fixed_window_step3(data, time_bin, key_dict, keep,
     # get lick frequency for each trial in given window
     data = fixed_window_lickfreq_helper(data, ['condition', 'animal', 'trial no'], values, 
                             keep + ['timestamp', 'first sample','offset'],'puff delta', start, end)
-    root.after(1, fixed_window_step4(data, time_bin, key_dict, keep, values, agg_arg))
+    root.after(1, lambda: fixed_window_step4(data, time_bin, key_dict, keep, values, agg_arg))
 
 def fixed_window_step4(data, time_bin, key_dict, keep,
                         values, agg_arg):
@@ -1631,7 +1631,7 @@ def fixed_window_step4(data, time_bin, key_dict, keep,
     data = align_to_timebin(data, time_bin, key_dict, keep, index_trial, values)
     data = align_to_day(data, key_dict, keep, index_trial, values)
     key_dict['timestamp'] = "timestamp"
-    root.after(1, aggregate_values(data,time_bin, key_dict,['condition', 'animal'], values, keep, "bin", *agg_arg))
+    root.after(1, lambda: aggregate_values(data,time_bin, key_dict,['condition', 'animal'], values, keep, "bin", *agg_arg))
 
 def fixed_window_lickfreq(data, window, time_bin, key_dict, keep, values,agg_arg):
     puff = key_dict["millis bin"]
@@ -1640,7 +1640,7 @@ def fixed_window_lickfreq(data, window, time_bin, key_dict, keep, values,agg_arg
     start, end = window
     key_start = "first sample"
     df = data.copy()
-    root.after(1, fixed_window_step1(df, time_bin, key_dict, keep,
+    root.after(1, lambda: fixed_window_step1(df, time_bin, key_dict, keep,
                                       values, start, end, agg_arg))
 
 def inst_step1(df, step2_args, agg_args):
@@ -1653,7 +1653,7 @@ def inst_step1(df, step2_args, agg_args):
     if (data['puff delta'].min()) != pd.to_timedelta('-800 ms'):
         data.loc[l, 'trial no'] = 0
         data.loc[l, 'puff delta'] = pd.to_timedelta('-800ms')
-    root.after(1, inst_step2(data, *step2_args, agg_args))
+    root.after(1, lambda: inst_step2(data, *step2_args, agg_args))
 
 def inst_step2(data, time_bin, key_dict, values, keep, freq_bin, agg_args):
     # calculate instentanteous or rolling window lick frequency for each trial
@@ -1663,21 +1663,21 @@ def inst_step2(data, time_bin, key_dict, values, keep, freq_bin, agg_args):
     # correct for pandas behavior when resampling with negative timedeltas
     # if the minimum delay (800 ms) is not present in the dataset
     data = data.loc[data['trial no'] > 0]
-    root.after(1, inst_step3(data,time_bin, keep, values, key_dict, agg_args))
+    root.after(1, lambda: inst_step3(data,time_bin, keep, values, key_dict, agg_args))
 
 def inst_step3(data, time_bin, keep, values, key_dict, agg_args):
      # align sample times for cross-trial averaging
     index_trial = ['condition', 'animal', 'trial no']
     data = bin_by_time(data, 100, "ms", index_trial, [], keep + ["timestamp", "offset"] + values, "puff delta", origin=None)
     data = time_to_float(data, "Time (ms)", "puff delta", "ms")
-    root.after(1, inst_step4(data, time_bin, key_dict, keep, values, agg_args))
+    root.after(1, lambda: inst_step4(data, time_bin, key_dict, keep, values, agg_args))
     
 def inst_step4(data,time_bin, key_dict, keep, values, agg_args):
     # align to timebin and day
     index_trial = ['condition', 'animal', 'trial no']
     data = align_to_timebin(data, time_bin, key_dict, keep + ["puff delta","Time (ms)"], index_trial, values)
     data = align_to_day(data, key_dict, keep + ["puff delta","Time (ms)"], index_trial, values)
-    root.after(1, aggregate_values(data, time_bin, key_dict, ['condition', 'animal'],values, keep, "full", *agg_args))
+    root.after(1, lambda: aggregate_values(data, time_bin, key_dict, ['condition', 'animal'],values, keep, "full", *agg_args))
 
 def instentanteous_lickfreq(data, freq_bin, time_bin, key_dict, keep, values, agg_args):
     '''Computes licking frequency at a given sample rate across trial and
@@ -1699,7 +1699,7 @@ def instentanteous_lickfreq(data, freq_bin, time_bin, key_dict, keep, values, ag
     '''
     df = data.copy()
     step2_args = [time_bin, key_dict, values, keep, freq_bin]
-    root.after(1, inst_step1(df, step2_args, agg_args))
+    root.after(1, lambda: inst_step1(df, step2_args, agg_args))
 
     return data
 
@@ -1769,9 +1769,10 @@ def aggregate_values(data, tb, keys, index, values,keep, kind, out_files, mins, 
     if kind == "full":
         root.after(1, lambda : fixed_window_wrapper(df, keys, mins, keep, values, index, tb, prog, out_files))
     elif kind=='bin':
-        root.after(1, last20_wrapper(data, keys, mins, keep, values, index, out_files, prog))
+        root.after(1, lambda: last20_wrapper(data, keys, mins, keep, values, index, out_files, prog))
     elif kind=="nth_part":
-        root.after(1, finish_analysis(prog))
+        print('here')
+        root.after(1, lambda: finish_analysis(prog))
 
 def run_analysis(df, kind, keys, mins, keep, values, index, analysis_args, prog, out_files=None, add=False):
     agg_args = [out_files, mins, prog, add, df]
@@ -1802,7 +1803,8 @@ def fixed_window_wrapper(formatted_res, keys, mins, keep, vals, index, tb, prog,
         ant_analysis = run_analysis(formatted_res, 'bin', 
                         keys, mins, keep, vals, index, [analysis_window, tb],prog, out_files, add_val.get())
     else:
-        root.after(1, finish_analysis(prog))
+        print("here2")
+        root.after(1, lambda: finish_analysis(prog))
 
 def last20_wrapper(ant_analysis, keys, mins, keep, vals, index, out_files, prog):
     num, denom = num_val.get().split('/')
@@ -1811,7 +1813,7 @@ def last20_wrapper(ant_analysis, keys, mins, keep, vals, index, out_files, prog)
         last20 = run_analysis(ant_analysis, 'nth_part', 
                         keys, mins, keep, vals, index, [int(num), int(denom)], prog, out_files, add_val.get())
     else:
-        root.after(1, finish_analysis(prog))
+        root.after(1, lambda: finish_analysis(prog))
 
 
 def close_and_plot(prog):
@@ -2267,7 +2269,7 @@ def generate_htmppf(data, pltwindow):
         htmp_args=['Time (ms)', 'Time (hr)', 'lick']
         fg = draw_facet(htmp_data, htmp_args, draw_heatmap, col='condition',square=True,
                 cmap='coolwarm', vmin=-6, vmax=6, col_wrap=6)
-        fg.suptitle('Instentaneous licking', y=0.98)
+        fg.suptitle('Instentaneous performance', y=0.98)
         fg.figure.subplots_adjust(left=0.15, bottom=0.2, top=0.9)
         if dispvar.get():
             lfdisp = mplEmbedPlot(fg.figure, master=pltwindow)
@@ -2378,8 +2380,6 @@ def analyze_and_plot():
     analyplot.set(True)
     loadfilevar.set(add_file_label_var.get())
     analysis()
-    
-    generate_plots()
     return
 
 plot_lf = ResizeEqualLabelFrame(root,cols=1, rows=5, text="2. Plotting")
