@@ -1802,7 +1802,7 @@ def fixed_window_wrapper(formatted_res, keys, mins, keep, vals, index, tb, prog,
         ant_analysis = run_analysis(formatted_res, 'bin', 
                         keys, mins, keep, vals, index, [analysis_window, tb],prog, out_files, add_val.get())
     else:
-        root.after(1, f(ant_analysis, keys, mins, keep, vals, index, prog, out_files))
+        root.after(1, finish_analysis(prog))
 
 def last20_wrapper(ant_analysis, keys, mins, keep, vals, index, out_files, prog):
     num, denom = num_val.get().split('/')
@@ -1813,9 +1813,15 @@ def last20_wrapper(ant_analysis, keys, mins, keep, vals, index, out_files, prog)
     else:
         root.after(1, finish_analysis(prog))
 
+
+def close_and_plot(prog):
+    if analyplot.get():
+        root.after(2000, prog.destroy)
+        generate_plots()
+
 def finish_analysis(prog):
     mssg.set("Done!")
-    root.after(2000, lambda: prog.destroy())
+    root.after(1, lambda: close_and_plot(prog))
 
 
 mssg = StringVar(value="Analysis")
@@ -2367,9 +2373,12 @@ def generate_plots():
     generate_nthpart(data,plt_window)
     generate_trialshr(data,plt_window)
 
+analyplot = BooleanVar(value=False)
 def analyze_and_plot():
-    analysis()
+    analyplot.set(True)
     loadfilevar.set(add_file_label_var.get())
+    analysis()
+    
     generate_plots()
     return
 
@@ -2388,6 +2397,7 @@ ant_lf_cb = EnterCheckbutton(ant_lf, text='Fixed window lick frequency', variabl
 ant_perf_var = BooleanVar(value=True)
 ant_perf = EnterCheckbutton(ant_lf, text='Fixed window performance', variable=ant_perf_var,onvalue=True, offvalue=False)
 
+analplot = BooleanVar(value=False)
 
 full_lf = ResizeEqualLabelFrame(plot_lf,rows=4, cols=1, text='Instentaneous Plots')
 

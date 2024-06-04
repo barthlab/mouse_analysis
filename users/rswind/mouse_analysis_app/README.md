@@ -1,22 +1,39 @@
 # HOW TO USE `mouse_analysis_app.py`
 
 # 1. INSTALLATION
- 
-1. Install Miniconda from this link: https://www.python.org/downloads/
+
+## Option 1 - miniconda
+1. Install Miniconda from this link: https://docs.anaconda.com/free/miniconda/
 
 2. open a Miniconda prompt
 
-3. run: `conda  create -n mouse_analysis python=3.11.3 numpy=1.26.4 pandas=2.2.1 matplotlib=3.8.4 tk=8.6.12`
+3. run: `conda  create -n mouse_analysis python=3.11.3 numpy=1.26.4 pandas=2.2.1 matplotlib=3.8.4 tk=8.6.12 seaborn=0.13.0 openpyxl`
 
-4. alternatively, you can check that those package versions are installed with your main python install. `mouse_analysis_app` is not guaranteed to work with other versions
+
+## Option 2 - python only
+
+1. Intall python from this link: https://www.python.org/downloads/
+
+2. open the command line
+
+3. run `pip install numpy==1.26.4 pandas==2.2.1 matplotlib==3.8.4 seaborn==0.13.0 openpyxl`
 
 # 2. RUNNING 
 
+## Option 1 - Miniconda
 1. From the Miniconda prompt, run: `conda activate mouse_analysis`
 
 2. From the Miniconda prompt, run: `python3 [path_to_file]`. You should be able to copy and paste this from the file explorer into the command prompt.
 
-1. e.g. `python3 C:\Users\swind\Documents\lab_work\Barth\mouse_analysis_app.py`
+    1. e.g. `python3 C:\Users\swind\Documents\lab_work\Barth\mouse_analysis_app.py`
+
+## Option 2 - python only
+
+1. Double-click on python executable file
+
+or
+
+2. Open and run in any IDE
 
 # 3. USAGE
 
@@ -45,7 +62,7 @@ And requires a metadata excel sheet presemted in this format (columns in bracket
 | Animal3 | 2 | M | 27 | 2024-02-23 | Stormi | |
 | etc. | ...  |   |    |            | | |
 
-Columns can be in any order. `Animal ID` and `acc` are required. The names in the animal ID column must match the names of the folders containing behavior data. Additional columns can and animals can be present in the metadata file and will be ignored.
+Columns can be in any order. `Animal ID` and `acc` are required. The names in the animal ID column must match the names of the folders containing behavior data. Additional columns can and animals can be present in the metadata file and will be ignored. Animal names **must** not have underscores in them.
 
 ## 2. App layout
 	
