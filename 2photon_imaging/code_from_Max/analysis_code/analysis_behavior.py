@@ -56,7 +56,6 @@ def movement_vs_whisking(all_sessions):
     ax[0].set_title("PPH_M_1R")
     ax[1].set_title("PPH_M_NC")
     plt.show()
-    exit()
 
 
 def movement_vs_whisking_per_trial(all_trials):
@@ -100,7 +99,6 @@ def movement_vs_whisking_per_trial(all_trials):
     ax[0].set_title("PPH_M_1R")
     ax[1].set_title("PPH_M_NC")
     plt.show()
-    exit()
 
 
 def auc_ttest(all_stationary, all_whi_only, all_whi_while, all_intense):
@@ -137,7 +135,6 @@ def auc_ttest(all_stationary, all_whi_only, all_whi_while, all_intense):
     a_nc, b_nc = np.concatenate(a_nc), np.concatenate(b_nc)
     a_1r, b_1r = np.concatenate(a_1r), np.concatenate(b_1r)
     p = ttest_ind(a_nc, b_nc).pvalue
-    print(p)
     ax[1].scatter(simple_beeswarm2(a_nc, width=0.25) + 0, a_nc, s=5, facecolors='none', edgecolors='black', alpha=0.7)
     ax[1].errorbar(0 - 0.5, np.mean(a_nc), yerr=np.std(a_nc),
                    fmt='o', color='black', alpha=0.7, markersize=4, capsize=7)
@@ -159,7 +156,6 @@ def auc_ttest(all_stationary, all_whi_only, all_whi_while, all_intense):
     for i in range(2):
         ax[i].spines[['right', 'top']].set_visible(False)
         ax[i].set_xticks([0, 2], ["stationary", f"whisking while running\n+\nintense whisking"])
-    print(p)
     plt.show()
 
 
@@ -168,12 +164,13 @@ def main(task_id, analysis_list, data_path, save_dir):
     all_stationary, all_whi_only, all_whi_while, all_intense = [], [], [], []
     for mice_id, num_session in analysis_list:
         trials, sessions = data_fetcher(path.join(data_path, task_id, mice_id), num_session,
-                                        path.join(save_dir, task_id, mice_id), elaborate=False, )
+                                        path.join(save_dir, task_id, mice_id), elaborate=True)
         all_trials.append(trials)
         all_sessions.append(sessions)
-        tmp_session_videos_interface(sessions, path.join(data_path, task_id, mice_id),
-                                     save_dir=path.join(save_dir, task_id, mice_id, "videos"))
-        continue
+        ## videos are too large to upload to github
+        # tmp_session_videos_interface(sessions, path.join(data_path, task_id, mice_id),
+        #                              save_dir=path.join(save_dir, task_id, mice_id, "videos"))
+
         trials.append(auc_extractor)
         trials.append(behavior_extractor)
         stationary = trials.filter(drop=False, behavior_type='stationary')
@@ -186,26 +183,26 @@ def main(task_id, analysis_list, data_path, save_dir):
         all_whi_while.append(whisking_while_running)
         all_intense.append(intense_whisking)
 
-        # trials_plot([stationary, whisking_only, whisking_while_running, intense_whisking],
-        #             [mice_id, ],
-        #             ["stationary", "whisking only", "whisking while running", "intense whisking"],
-        #             path.join(save_dir, task_id, mice_id, "behavior_compare.jpg"))
-    # movement_vs_whisking(all_sessions)
-    # movement_vs_whisking_per_trial(all_trials)
-    # auc_ttest(all_stationary, all_whi_only, all_whi_while, all_intense)
+        trials_plot([stationary, whisking_only, whisking_while_running, intense_whisking],
+                    [mice_id, ],
+                    ["stationary", "whisking only", "whisking while running", "intense whisking"],
+                    path.join(save_dir, task_id, mice_id, "behavior_compare.jpg"))
+    movement_vs_whisking(all_sessions)
+    movement_vs_whisking_per_trial(all_trials)
+    auc_ttest(all_stationary, all_whi_only, all_whi_while, all_intense)
 
 
 if __name__ == "__main__":
-    main("BehaviorAnalysis",
+    main("example_task",
          (
-             # (path.join("PPH_M_1R", "FOV1"), 2),
-             # (path.join("PPH_M_1R", "FOV2"), 2),
-             # (path.join("PPH_M_1R", "FOV3"), 2),
+             (path.join("PPH_M_1R", "FOV1"), 2),
+             (path.join("PPH_M_1R", "FOV2"), 2),
+             (path.join("PPH_M_1R", "FOV3"), 2),
              (path.join("PPH_M_1R", "FOV4"), 2),
-             # (path.join("PPH_M_NC", "FOV1"), 2),
-             # (path.join("PPH_M_NC", "FOV2"), 2),
-             # (path.join("PPH_M_NC", "FOV3"), 2),
-             # (path.join("PPH_M_NC", "FOV4"), 2),
+             (path.join("PPH_M_NC", "FOV1"), 2),
+             (path.join("PPH_M_NC", "FOV2"), 2),
+             (path.join("PPH_M_NC", "FOV3"), 2),
+             (path.join("PPH_M_NC", "FOV4"), 2),
          ),
          path.join(path.dirname(__file__), "data"),
          path.join(path.dirname(__file__), "imgs", 'behaviors')

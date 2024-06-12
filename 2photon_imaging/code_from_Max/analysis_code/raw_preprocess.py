@@ -8,7 +8,7 @@ from scipy.ndimage import gaussian_filter
 trial_range = (25, 25)
 baseline_range = 15
 session_time = 6e5
-unit_frame_speed = 5.11 * 29.8 / 6000  # dm/s
+unit_frame_speed = 5.11 * 30.5 / 6000  # dm/s
 tpr = 600
 
 
@@ -201,8 +201,8 @@ def data_fetcher(mice_dir, num_session, save_dir, elaborate: bool = True, **kwar
     ttl = read_csv_dir(path.join(mice_dir, f"ttl"), 0, elaborate)
     session_name = read_xlsx(path.join(mice_dir, f"session_names.xlsx"), None, elaborate)[0]
     raw_mov = read_csv_dir(path.join(mice_dir, "distance"), 0, elaborate)
-    # raw_whisking = read_npy_dir(path.join(mice_dir, "whisking"), elaborate)
-    # raw_grooming = read_npy_dir(path.join(mice_dir, "grooming"), elaborate)
+    raw_whisking = read_npy_dir(path.join(mice_dir, "whisking"), elaborate)
+    raw_grooming = read_npy_dir(path.join(mice_dir, "grooming"), elaborate)
 
     raw_data, dropped_pos, xyoff = drop_frames(raw_data)
     calcium = df_f_calculation(raw_data)
@@ -213,13 +213,12 @@ def data_fetcher(mice_dir, num_session, save_dir, elaborate: bool = True, **kwar
 
     session_frames = int(calcium.shape[1] / num_session)
     movement, position = movement_extraction(raw_mov, num_session, session_frames, ttl_rpi_offset)
-    # whisking = behavior_extraction(raw_whisking, num_session, session_frames, video_rpi_offset)
-    # grooming = behavior_extraction(raw_grooming, num_session, session_frames, video_rpi_offset)
+    whisking = behavior_extraction(raw_whisking, num_session, session_frames, video_rpi_offset)
+    grooming = behavior_extraction(raw_grooming, num_session, session_frames, video_rpi_offset)
 
     trials, sessions = trial_extraction(calcium, rpi_time, ttl, dropped_pos, xyoff, session_name, num_session,
-                                        behavior={ "movement": movement,"position": position,},
-                                        # behavior={"movement": movement, "position": position,
-                                        #           "whisking": whisking, "grooming": grooming, },
+                                        behavior={"movement": movement, "position": position,
+                                                  "whisking": whisking, "grooming": grooming, },
                                         **kwargs)
     if elaborate:
         simple_raster(np.concatenate(sessions.extract("df_f"), axis=-1), path.join(save_dir, "full_raster.jpg"))
@@ -227,6 +226,10 @@ def data_fetcher(mice_dir, num_session, save_dir, elaborate: bool = True, **kwar
         trials_raster(trials, path.join(save_dir, "trials_raster.jpg"))
     return trials, sessions
 
+
+#############
+## trial append function
+#############
 
 def extract_peak_before(trial: Trial):
     assert trial_range[0] > 3 * baseline_range
