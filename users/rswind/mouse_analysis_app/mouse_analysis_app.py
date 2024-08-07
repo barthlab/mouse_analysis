@@ -358,7 +358,6 @@ class AdvancedWindow(tk.Toplevel):
             g.figure.subplots_adjust(left=0.05, bottom=0.15)
 
     def generate_htmplf(self):
-
         if self.htmplf:
             try:
                 self.data['inst means filtered']
@@ -591,9 +590,10 @@ class PlotWindow(tk.Toplevel):
         # load data
         data = dict()
         for type_name in os.listdir(self.loaddir):
-            splt_name = type_name.split('.')[0].split('_')
-            splt_name = [re.search('[a-z]+',splt_name[0])[0]] + splt_name[2:]
-            data[' '.join(splt_name)] = pd.read_csv(self.loaddir + '\\' + type_name, dtype=self.dtype_map, header=0)
+            if 'data' not in type_name and os.path.isfile(self.loaddir + '\\' + type_name):
+                splt_name = type_name.split('.')[0].split('_')
+                splt_name = [re.search('[a-z]+',splt_name[0])[0]] + splt_name[2:]
+                data[' '.join(splt_name)] = pd.read_csv(self.loaddir + '\\' + type_name, dtype=self.dtype_map, header=0)
         self.data = data
 
         self.generate_ant_perf()
@@ -1285,8 +1285,14 @@ class PlotWindow(tk.Toplevel):
             if self.disp:
                 self.fdisp = MplEmbedPlot(fg.figure, master=self.plt_container)
                 self.plt_container.add(self.fdisp.frame, text='Inst Lick Freq Heatmap')
+            d = htmp_data.pivot(index=["condition",  'stimulus',"Time (hr)"], columns="Time (ms)", values='lick')
             if self.save:
                 fg.savefig(self.savedir+"\\lckfreqheatmap.png", transparent=True)
+                d.to_csv(self.savedir+"\\lckfreqheatmap.csv")
+            else:
+                if not os.path.isdir(self.loaddir + "\\heatmap"):
+                    os.mkdir(self.loaddir + "\\heatmap")
+                d.to_csv(self.loaddir+"\\heatmap\\lckfreqheatmap.csv")
 
     def generate_htmppf(self):
         if self.htmppf:
@@ -1453,9 +1459,9 @@ class RunAnalysisWindow(tk.Toplevel):
             self.ant_out = [self.out_fold + '\\' +  analysis_output[i] for i in range(0,7)]
             self.last20_out = [self.out_fold + '\\' +  analysis_output[i] for i in range(12,16)]
         else:
-            self.full_out = [self.out_fold + '\\inst_'  + self.out_name + '_' + suff + '.txt' for suff in self.full_suffix]
-            self.ant_out = [self.out_fold + f'\\fixed {self.fixedstart}-{self.fixedend}_'  + self.out_name + '_' + suff + '.txt' for suff in self.ant_suffix]
-            self.last20_out = [self.out_fold + f'\\{self.num}-{self.denom} part _'  + self.out_name + '_' + suff  + '.txt' for suff in self.last20_suffix]
+            self.full_out = [self.out_fold + '\\inst_'  + self.out_name + '_' + suff + '.csv' for suff in self.full_suffix]
+            self.ant_out = [self.out_fold + f'\\fixed {self.fixedstart}-{self.fixedend}_'  + self.out_name + '_' + suff + '.csv' for suff in self.ant_suffix]
+            self.last20_out = [self.out_fold + f'\\{self.num}-{self.denom} part _'  + self.out_name + '_' + suff  + '.csv' for suff in self.last20_suffix]
         self.out_files = self.full_out + self.ant_out + self.last20_out
 
         self.plot = master.analyplot.get()
