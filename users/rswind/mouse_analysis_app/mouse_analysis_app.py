@@ -1312,11 +1312,17 @@ class PlotWindow(tk.Toplevel):
                     cmap='coolwarm', vmin=-6, vmax=6, col_wrap=6, xticklabels=3)
             fg.suptitle('Instantaneous performance', y=0.98)
             fg.subplots_adjust(left=0.05, bottom=0.1, top=0.9, right=0.95, wspace=0.25, hspace=0.25)
+            d = htmp_data.pivot(index=["condition", "Time (hr)"], columns="Time (ms)", values='lick')
             if self.disp:
                 self.htmppfdisp = MplEmbedPlot(fg.figure, master=self.plt_container)
                 self.plt_container.add(self.htmppfdisp.frame, text='Inst Perf Heatmap')
             if self.save:
-                fg.savefig(self.savedir+"\\perfheatmap.png", transparent=True)
+                fg.savefig(self.savedir+"\\perfheatmap.png", transparent=True)    
+                d.to_csv(self.savedir+"\\lckfreqheatmap.csv")
+            else:
+                if not os.path.isdir(self.loaddir + "\\heatmap"):
+                    os.mkdir(self.loaddir + "\\heatmap")
+                d.to_csv(self.loaddir+"\\heatmap\\lckfreqheatmap.csv")
  
     def generate_nthpart(self):
         if self.nthpart:
