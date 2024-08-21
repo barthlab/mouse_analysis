@@ -1584,7 +1584,7 @@ class RunAnalysisWindow(tk.Toplevel):
         '''Label trials with both stimulus or blank and water or no water distinction.'''
         data = self.label_trials_water(data)
         if "stimulus" in data.columns:
-            data = label_trials_stimulus(data)
+            data = self.label_trials_stimulus(data)
         else:
             data["stimulus"] = data["water"]
             data["stimulus"] = data["stimulus"].replace({"water":"stimulus", "no water":"blank"})
