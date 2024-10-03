@@ -4,205 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12b9a654-0e07-4610-93e7-b53266748b00" name="Changes" comment="update: rearrange code structure layout&#10;--Max">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/1hour_training/trainingCode.m" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/1hour_training/trainingCode.m" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/Trials.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/Trials.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/analysis_behavior.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/analysis_behavior.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/distance/distance_data_PPH_M_1R_04_19_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/distance/distance_data_PPH_M_1R_04_19_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/distance/distance_data_PPH_M_1R_04_22_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/distance/distance_data_PPH_M_1R_04_22_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/grooming/grooming_PPH_M_1R_04_19_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/grooming/grooming_PPH_M_1R_04_19_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/grooming/grooming_PPH_M_1R_04_22_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/grooming/grooming_PPH_M_1R_04_22_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/ttl/ttl_data_PPH_M_1R_04_19_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/ttl/ttl_data_PPH_M_1R_04_19_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/ttl/ttl_data_PPH_M_1R_04_22_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/ttl/ttl_data_PPH_M_1R_04_22_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/whisking/whisking_PPH_M_1R_04_19_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/whisking/whisking_PPH_M_1R_04_19_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV1/whisking/whisking_PPH_M_1R_04_22_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV1/whisking/whisking_PPH_M_1R_04_22_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/distance/distance_data_PPH_M_1R_04_19_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/distance/distance_data_PPH_M_1R_04_19_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/distance/distance_data_PPH_M_1R_04_22_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/distance/distance_data_PPH_M_1R_04_22_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/grooming/grooming_PPH_M_1R_04_19_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/grooming/grooming_PPH_M_1R_04_19_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/grooming/grooming_PPH_M_1R_04_22_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/grooming/grooming_PPH_M_1R_04_22_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/ttl/ttl_data_PPH_M_1R_04_19_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/ttl/ttl_data_PPH_M_1R_04_19_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/ttl/ttl_data_PPH_M_1R_04_22_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/ttl/ttl_data_PPH_M_1R_04_22_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/whisking/whisking_PPH_M_1R_04_19_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/whisking/whisking_PPH_M_1R_04_19_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV2/whisking/whisking_PPH_M_1R_04_22_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV2/whisking/whisking_PPH_M_1R_04_22_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/distance/distance_data_PPH_M_1R_04_19_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/distance/distance_data_PPH_M_1R_04_19_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/distance/distance_data_PPH_M_1R_04_22_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/distance/distance_data_PPH_M_1R_04_22_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/grooming/grooming_PPH_M_1R_04_19_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/grooming/grooming_PPH_M_1R_04_19_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/grooming/grooming_PPH_M_1R_04_22_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/grooming/grooming_PPH_M_1R_04_22_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/ttl/ttl_data_PPH_M_1R_04_19_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/ttl/ttl_data_PPH_M_1R_04_19_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/ttl/ttl_data_PPH_M_1R_04_22_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/ttl/ttl_data_PPH_M_1R_04_22_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/whisking/whisking_PPH_M_1R_04_19_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/whisking/whisking_PPH_M_1R_04_19_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV3/whisking/whisking_PPH_M_1R_04_22_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV3/whisking/whisking_PPH_M_1R_04_22_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/distance/distance_data_PPH_M_1R_04_19_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/distance/distance_data_PPH_M_1R_04_19_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/distance/distance_data_PPH_M_1R_04_22_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/distance/distance_data_PPH_M_1R_04_22_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/grooming/grooming_PPH_M_1R_04_19_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/grooming/grooming_PPH_M_1R_04_19_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/grooming/grooming_PPH_M_1R_04_22_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/grooming/grooming_PPH_M_1R_04_22_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/ttl/ttl_data_PPH_M_1R_04_19_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/ttl/ttl_data_PPH_M_1R_04_19_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/ttl/ttl_data_PPH_M_1R_04_22_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/ttl/ttl_data_PPH_M_1R_04_22_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/whisking/whisking_PPH_M_1R_04_19_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/whisking/whisking_PPH_M_1R_04_19_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_1R/FOV4/whisking/whisking_PPH_M_1R_04_22_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_1R/FOV4/whisking/whisking_PPH_M_1R_04_22_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/distance/distance_data_PPH_M_NC_04_19_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/distance/distance_data_PPH_M_NC_04_19_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/distance/distance_data_PPH_M_NC_04_22_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/distance/distance_data_PPH_M_NC_04_22_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/grooming/grooming_PPH_M_NC_04_19_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/grooming/grooming_PPH_M_NC_04_19_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/grooming/grooming_PPH_M_NC_04_22_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/grooming/grooming_PPH_M_NC_04_22_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/ttl/ttl_data_PPH_M_NC_04_19_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/ttl/ttl_data_PPH_M_NC_04_19_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/ttl/ttl_data_PPH_M_NC_04_22_2024_F1_OBC1_1.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/ttl/ttl_data_PPH_M_NC_04_22_2024_F1_OBC1_1.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/whisking/whisking_PPH_M_NC_04_19_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/whisking/whisking_PPH_M_NC_04_19_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV1/whisking/whisking_PPH_M_NC_04_22_2024_F1_OBC1_1.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV1/whisking/whisking_PPH_M_NC_04_22_2024_F1_OBC1_1.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/distance/distance_data_PPH_M_NC_04_19_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/distance/distance_data_PPH_M_NC_04_19_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/distance/distance_data_PPH_M_NC_04_22_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/distance/distance_data_PPH_M_NC_04_22_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/grooming/grooming_PPH_M_NC_04_19_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/grooming/grooming_PPH_M_NC_04_19_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/grooming/grooming_PPH_M_NC_04_22_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/grooming/grooming_PPH_M_NC_04_22_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/ttl/ttl_data_PPH_M_NC_04_19_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/ttl/ttl_data_PPH_M_NC_04_19_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/ttl/ttl_data_PPH_M_NC_04_22_2024_F2_OBC1_2.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/ttl/ttl_data_PPH_M_NC_04_22_2024_F2_OBC1_2.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/whisking/whisking_PPH_M_NC_04_19_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/whisking/whisking_PPH_M_NC_04_19_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV2/whisking/whisking_PPH_M_NC_04_22_2024_F2_OBC1_2.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV2/whisking/whisking_PPH_M_NC_04_22_2024_F2_OBC1_2.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/distance/distance_data_PPH_M_NC_04_19_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/distance/distance_data_PPH_M_NC_04_19_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/distance/distance_data_PPH_M_NC_04_22_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/distance/distance_data_PPH_M_NC_04_22_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/grooming/grooming_PPH_M_NC_04_19_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/grooming/grooming_PPH_M_NC_04_19_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/grooming/grooming_PPH_M_NC_04_22_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/grooming/grooming_PPH_M_NC_04_22_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/ttl/ttl_data_PPH_M_NC_04_19_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/ttl/ttl_data_PPH_M_NC_04_19_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/ttl/ttl_data_PPH_M_NC_04_22_2024_F3_OBC1_3.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/ttl/ttl_data_PPH_M_NC_04_22_2024_F3_OBC1_3.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/whisking/whisking_PPH_M_NC_04_19_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/whisking/whisking_PPH_M_NC_04_19_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV3/whisking/whisking_PPH_M_NC_04_22_2024_F3_OBC1_3.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV3/whisking/whisking_PPH_M_NC_04_22_2024_F3_OBC1_3.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/Fall.mat" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/Fall.mat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/distance/distance_data_PPH_M_NC_04_19_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/distance/distance_data_PPH_M_NC_04_19_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/distance/distance_data_PPH_M_NC_04_22_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/distance/distance_data_PPH_M_NC_04_22_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/grooming/grooming_PPH_M_NC_04_19_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/grooming/grooming_PPH_M_NC_04_19_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/grooming/grooming_PPH_M_NC_04_22_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/grooming/grooming_PPH_M_NC_04_22_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/session_names.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/session_names.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/time_point.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/time_point.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/ttl/ttl_data_PPH_M_NC_04_19_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/ttl/ttl_data_PPH_M_NC_04_19_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/ttl/ttl_data_PPH_M_NC_04_22_2024_F4_OBC1_4.csv" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/ttl/ttl_data_PPH_M_NC_04_22_2024_F4_OBC1_4.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/whisking/whisking_PPH_M_NC_04_19_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/whisking/whisking_PPH_M_NC_04_19_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/data/example_task/PPH_M_NC/FOV4/whisking/whisking_PPH_M_NC_04_22_2024_F4_OBC1_4.npy" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/data/example_task/PPH_M_NC/FOV4/whisking/whisking_PPH_M_NC_04_22_2024_F4_OBC1_4.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/raw_preprocess.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/raw_preprocess.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/visualize_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/visualize_basic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/visualize_trials_comparison.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/visualize_trials_comparison.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/analysis_code/visualize_video.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/analysis_code/visualize_video.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/ArduinoManager.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/ArduinoManager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/Modules.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/Modules.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/constants.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/data_collection.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/data_collection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/position_recorder.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/position_recorder.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/pupil_extraction.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/pupil_extraction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/test_airpuff.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/test_airpuff.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/test_buzzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/test_buzzer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_Max/raspberry_pi_code/test_encoder_sensor.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/Max/raspberry_pi_code/test_encoder_sensor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_MoZhu/Curve_output_df_f.m" beforeDir="false" afterPath="$PROJECT_DIR$/users/Mo/Curve_output_df_f.m" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/2photon_imaging/code_from_MoZhu/drop_frames.m" beforeDir="false" afterPath="$PROJECT_DIR$/users/Mo/drop_frames.m" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/analysis.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/analysis.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/analysis_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/analysis_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/example_output/lick_frequency.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/example_output/lick_frequency.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/example_output/parameters.txt" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/example_output/parameters.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/example_output/performance.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/example_output/performance.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/example_output/rawlickfrequency.csv" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/example_output/rawlickfrequency.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/example_output/trial_counts.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/example_output/trial_counts.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/loader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/mouse_analysis.mplstyle" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/mouse_analysis.mplstyle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/plot_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/plot_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/MMY7 F Acc72 Mason temptest.txt06_20_22_T_12_51_17.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/MMY7 F Acc72 Mason temptest.txt06_20_22_T_14_48_14.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_AnalysisFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_DataFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_ForPlotting.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_Last20Data.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_Plots.fig" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/ACC3/MMY7/v16 analysis/MMY7 F Acc72 Mason temptest.txt_Plots.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/LYO1 M Bambi2 Acc48SAT24 temptest.txt03_04_22_T_13_00_52.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_AnalysisFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_DataFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_ForPlotting.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_Last20Data.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_Plots.fig" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/LYO1/v16 analysis/LYO1 M Bambi2 Acc48SAT24 temptest.txt_Plots.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/PDF5 M Acc48SAT24 Sushi temptest.txt11_04_23_T_12_41_27.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_AnalysisFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_DataFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_ForPlotting.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_Last20Data.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_Plots.fig" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/SAT1/PDF5/v16 analysis/PDF5 M Acc48SAT24 Sushi temptest.txt_Plots.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt05_30_23_T_12_53_59.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt_AnalysisFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt_DataFinal.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt_ForPlotting.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt_Last20Data.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/OEX5 F PSAcc48PSSAT24 Travis pseudo2.txt_Plots.fig" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_data/psSAT1/OEX5/v16 analysis/oex5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/full_trial_analysis/sample_metadata.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/training_cage_code/behavior_analysis/sample_metadata.xlsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mouse_analysis.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/SomatosensoryLearning_LickAnalysisV16.m" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_app/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_app/Tooltip.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_app/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_app/custom.mplstyle" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_app/mouse_analysis_app.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_cli/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_cli/format_arduino_data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_cli/lickfrequency_analysis.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_cli/lickfrequency_pipeline.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/mouse_analysis_cli/plot_data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/DCZ.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/Eunsol_plots_notebook.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/ITI_measures.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/Mo_plots_notebook.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/analysis.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/analysis_functions.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/analysis_helper.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/analysis_pipeline.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/behavior_jptyr.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_SAT.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_analysis.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_dcz.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_dcz_100ms_4h.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_hm4di_mch_sat_100ms_4h.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/eunsol_new_vs_old_acc.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/hm4di.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/intertrial_interval_num_trials.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/loader.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/trace_analysis.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/trace_notebook.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/old/unused.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240507 joe 6ohda.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240510labmeeting_retrain.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240510lickfreqheatmap.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240515ACClickfreq.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240515retrain.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/20240604retrain_final summary.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/allen_atlas_download.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/lickfrequency_analysis.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/rs_notebooks/plot_data.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/trace_notebook.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/rswind/v16_analysis.ipynb" beforeDir="false" />
-    </list>
+    <list default="true" id="12b9a654-0e07-4610-93e7-b53266748b00" name="Changes" comment="update: rearrange code structure layout&#10;--Max" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -250,11 +52,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\training_cage_code\behavior_analysis" />
+      <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\training_cage_code\1hour_training" />
       <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\training_cage_code" />
+      <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\training_cage_code\behavior_analysis" />
       <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\users" />
       <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\users_own_code\rswind" />
-      <recent name="C:\Users\maxyc\PycharmProjects\mouse_analysis\users_own_code\Mo" />
     </key>
   </component>
   <component name="RunManager">
@@ -320,7 +122,7 @@
       <updated>1718207371118</updated>
       <workItem from="1718207372287" duration="3539000" />
       <workItem from="1718214076921" duration="13000" />
-      <workItem from="1727989487901" duration="760000" />
+      <workItem from="1727989487901" duration="1044000" />
     </task>
     <task id="LOCAL-00004" summary="update: 2photon calcium imaging analysis example data&#10;--Max">
       <option name="closed" value="true" />
@@ -338,7 +140,15 @@
       <option name="project" value="LOCAL" />
       <updated>1727989969250</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="update: rearrange code structure layout&#10;--Max">
+      <option name="closed" value="true" />
+      <created>1727990548798</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1727990548798</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
